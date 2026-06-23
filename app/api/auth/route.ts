@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendWhatsApp, formatOTP } from '@/lib/twilio'
+import { sendWhatsApp, formatOTP } from '@/lib/whatsapp'
 
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()

@@ -1,28 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { extractBillFromText, extractBillFromPDF, extractBillFromImage, ExtractedBill } from '@/lib/claude'
-import { sendWhatsApp, formatBillConfirmation, formatIncompleteConfirmation } from '@/lib/twilio'
+import { sendWhatsApp, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation } from '@/lib/whatsapp'
 
-// Twilio verifies the webhook with a GET during setup
-export async function GET() {
-  return NextResponse.json({ status: 'ok' })
+// Meta sends a GET to verify the webhook endpoint on setup
+export async function GET(req: NextRequest) {
+  const mode      = req.nextUrl.searchParams.get('hub.mode')
+  const token     = req.nextUrl.searchParams.get('hub.verify_token')
+  const challenge = req.nextUrl.searchParams.get('hub.challenge')
+
+  if (mode === 'subscribe' && token === process.env.META_WEBHOOK_VERIFY_TOKEN) {
+    return new NextResponse(challenge, { status: 200 })
+  }
+  return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 }
 
 export async function POST(req: NextRequest) {
   try {
-    // Twilio sends application/x-www-form-urlencoded
-    const form = await req.formData()
+    const body = await req.json()
 
-    const rawFrom = form.get('From') as string        // "whatsapp:+27821234567"
-    const body    = form.get('Body') as string        // text content (may be empty for media)
-    const numMedia = parseInt((form.get('NumMedia') as string) || '0')
-    const mediaUrl  = form.get('MediaUrl0') as string | null
-    const mediaMime = form.get('MediaContentType0') as string | null
+    // Meta wraps messages in entry[].changes[].value.messages[]
+    const entry   = body?.entry?.[0]
+    const change  = entry?.changes?.[0]?.value
+    const message = change?.messages?.[0]
 
-    if (!rawFrom) return NextResponse.json({ status: 'ignored' })
+    if (!message) return NextResponse.json({ status: 'ignored' })
 
-    // Normalise to 27821234567 (no + or whatsapp: prefix)
-    const from = rawFrom.replace('whatsapp:+', '').replace('whatsapp:', '')
+    const from: string = message.from  // e.g. "27821234567"
 
     // Upsert user
     const { data: user, error: userError } = await supabaseAdmin
@@ -39,29 +43,28 @@ export async function POST(req: NextRequest) {
     let extracted: ExtractedBill | null = null
     let rawContent = ''
 
-    if (numMedia > 0 && mediaUrl && mediaMime) {
-      rawContent = `[media: ${mediaUrl}]`
+    if (message.type === 'text') {
+      rawContent = message.text.body
+      extracted = await extractBillFromText(rawContent)
 
-      // Fetch the media using Twilio credentials (media URLs are auth-protected)
-      const mediaRes = await fetch(mediaUrl, {
-        headers: {
-          Authorization: 'Basic ' + Buffer.from(
-            `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
-          ).toString('base64')
-        }
-      })
+    } else if (message.type === 'document') {
+      const mediaId  = message.document.id
+      const mimeType = message.document.mime_type
+      rawContent = `[document: ${message.document.filename ?? mediaId}]`
 
-      const buffer = await mediaRes.arrayBuffer()
-      const base64 = Buffer.from(buffer).toString('base64')
+      const { base64, mimeType: mime } = await downloadMedia(mediaId)
 
-      if (mediaMime === 'application/pdf') {
+      if (mime === 'application/pdf') {
         extracted = await extractBillFromPDF(base64)
-      } else if (mediaMime.startsWith('image/')) {
-        extracted = await extractBillFromImage(base64, mediaMime as 'image/jpeg' | 'image/png' | 'image/webp')
+      } else if (mime.startsWith('image/')) {
+        extracted = await extractBillFromImage(base64, mime as 'image/jpeg' | 'image/png' | 'image/webp')
       }
-    } else if (body?.trim()) {
-      rawContent = body
-      extracted = await extractBillFromText(body)
+
+    } else if (message.type === 'image') {
+      const mediaId = message.image.id
+      rawContent = `[image: ${mediaId}]`
+      const { base64, mimeType: mime } = await downloadMedia(mediaId)
+      extracted = await extractBillFromImage(base64, mime as 'image/jpeg' | 'image/png' | 'image/webp')
     }
 
     if (!extracted?.payee || !extracted?.amount) {
@@ -69,16 +72,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'ok' })
     }
 
-    // Payee memory — save details if we have them, look them up if we don't
+    // Payee memory
     if (extracted.account_number) {
       await upsertPayee(user.id, extracted)
     } else {
       const savedPayee = await lookupPayee(user.id, extracted.payee)
       if (savedPayee) {
-        extracted.bank_name     = savedPayee.bank_name
+        extracted.bank_name      = savedPayee.bank_name
         extracted.account_number = savedPayee.account_number
-        extracted.branch_code   = savedPayee.branch_code
-        extracted.reference     = extracted.reference ?? savedPayee.default_reference
+        extracted.branch_code    = savedPayee.branch_code
+        extracted.reference      = extracted.reference ?? savedPayee.default_reference
       }
     }
 
@@ -100,6 +103,8 @@ export async function POST(req: NextRequest) {
       : formatIncompleteConfirmation(extracted.payee, extracted.amount, extracted.due_date)
 
     await sendWhatsApp(from, reply)
+
+    // Meta requires a 200 response quickly
     return NextResponse.json({ status: 'ok' })
 
   } catch (err) {
@@ -128,7 +133,6 @@ async function lookupPayee(userId: string, payeeName: string) {
     .from('payees')
     .select('*')
     .eq('user_id', userId)
-
   if (!payees?.length) return null
   const needle = payeeName.toLowerCase().trim()
   return payees.find(p => p.name.includes(needle) || needle.includes(p.name)) ?? null

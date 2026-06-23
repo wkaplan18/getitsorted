@@ -52,20 +52,17 @@ export async function extractBillFromPDF(base64Data: string): Promise<ExtractedB
     max_tokens: 512,
     messages: [{
       role: 'user',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       content: [
         {
           type: 'document',
-          source: {
-            type: 'base64',
-            media_type: 'application/pdf',
-            data: base64Data
-          }
-        } as Parameters<typeof client.messages.create>[0]['messages'][0]['content'][0],
+          source: { type: 'base64', media_type: 'application/pdf', data: base64Data }
+        },
         {
           type: 'text',
           text: EXTRACTION_PROMPT
         }
-      ]
+      ] as any
     }]
   })
 
