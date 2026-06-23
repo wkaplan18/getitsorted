@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 
-export default function PaySuccess() {
+function PaySuccessContent() {
   const params = useSearchParams()
   const router = useRouter()
   const billId = params.get('bill_id')
@@ -15,7 +15,6 @@ export default function PaySuccess() {
     const phone = localStorage.getItem('sorted_phone')
     if (!phone) { router.push('/'); return }
 
-    // Mark the bill as paid
     fetch('/api/bills', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -55,5 +54,17 @@ export default function PaySuccess() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function PaySuccess() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-400">Loading...</p>
+      </div>
+    }>
+      <PaySuccessContent />
+    </Suspense>
   )
 }
