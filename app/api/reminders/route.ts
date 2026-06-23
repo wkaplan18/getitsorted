@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendWhatsApp, formatReminder } from '@/lib/clickatell'
+import { sendWhatsApp, formatReminder } from '@/lib/twilio'
 
 // Called daily by cron-job.org
 // Set up at cron-job.org: GET https://your-app.vercel.app/api/reminders?secret=YOUR_CRON_SECRET
