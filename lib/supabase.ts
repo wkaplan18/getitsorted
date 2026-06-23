@@ -1,0 +1,49 @@
+import { createClient } from '@supabase/supabase-js'
+
+// Public client — safe for browser use
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+// Service role client — server-side only, bypasses RLS
+export const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export type Bill = {
+  id: string
+  user_id: string
+  payee: string
+  amount: number
+  due_date: string | null
+  bank_name: string | null
+  account_number: string | null
+  branch_code: string | null
+  reference: string | null
+  status: 'pending' | 'paid' | 'overdue'
+  stitch_payment_id: string | null
+  raw_message: string | null
+  reminder_sent: boolean
+  created_at: string
+}
+
+export type Payee = {
+  id: string
+  user_id: string
+  name: string           // normalised lowercase
+  display_name: string
+  bank_name: string | null
+  account_number: string | null
+  branch_code: string | null
+  default_reference: string | null
+  updated_at: string
+}
+
+export type User = {
+  id: string
+  whatsapp_number: string
+  name: string | null
+  created_at: string
+}
