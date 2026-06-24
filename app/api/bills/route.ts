@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     .from('bills')
     .select('*')
     .eq('user_id', user.id)
-    .order('due_date', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false })
 
   return NextResponse.json({ bills: bills || [] })
 }
