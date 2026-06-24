@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse, unstable_after as after } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { extractBillFromText, extractBillFromPDF, extractBillFromImage, ExtractedBill } from '@/lib/claude'
 import { sendWhatsApp, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation } from '@/lib/whatsapp'
