@@ -387,7 +387,6 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: Bi
 
   const isPaid = bill.status === 'paid'
   const isIncomplete = !bill.account_number && !isPaid
-  const isOverdue = bill.due_date && new Date(bill.due_date) < new Date() && !isPaid
 
   function copy(val: string, label: string) {
     navigator.clipboard.writeText(val)
@@ -407,7 +406,6 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: Bi
     <div className={`bg-white rounded-2xl p-4 border transition-all ${
       isPaid ? 'opacity-60 border-gray-100' :
       isIncomplete ? 'border-amber-200' :
-      isOverdue ? 'border-red-200' :
       'border-gray-100'
     }`} style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
 
@@ -416,7 +414,6 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: Bi
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-gray-900">{bill.payee}</p>
             {isIncomplete && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Needs details</span>}
-            {isOverdue && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">Overdue</span>}
             {isPaid && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Paid</span>}
           </div>
           <p className="text-xs text-gray-300 mt-0.5">Received {receivedLabel}</p>
