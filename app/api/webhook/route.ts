@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, unstable_after as after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { extractBillFromText, extractBillFromPDF, extractBillFromImage, ExtractedBill } from '@/lib/claude'
 import { sendWhatsApp, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation } from '@/lib/whatsapp'
@@ -25,6 +25,26 @@ export async function POST(req: NextRequest) {
     const message = change?.messages?.[0]
 
     if (!message) return NextResponse.json({ status: 'ignored' })
+
+    // Return 200 immediately so Meta doesn't retry and create duplicates
+    // Process the message in the background after the response is sent
+    after(() => processMessage(message))
+    return NextResponse.json({ status: 'ok' })
+
+  } catch (err) {
+    console.error('Webhook error', err)
+    return NextResponse.json({ error: 'internal error' }, { status: 500 })
+  }
+}
+
+async function processMessage(message: { id: string; from: string; type: string; text?: { body: string }; document?: { id: string; mime_type: string; filename?: string }; image?: { id: string } }) {
+  try {
+    // Deduplicate: ignore if we've already processed this message ID
+    const { count } = await supabaseAdmin
+      .from('bills')
+      .select('id', { count: 'exact', head: true })
+      .eq('whatsapp_message_id', message.id)
+    if (count && count > 0) return
 
     const from: string = message.from  // e.g. "27821234567"
 
@@ -69,7 +89,7 @@ export async function POST(req: NextRequest) {
 
     if (!extracted?.payee || !extracted?.amount) {
       await sendWhatsApp(from, "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date.")
-      return NextResponse.json({ status: 'ok' })
+      return
     }
 
     // Payee memory
@@ -86,16 +106,17 @@ export async function POST(req: NextRequest) {
     }
 
     await supabaseAdmin.from('bills').insert({
-      user_id:        user.id,
-      payee:          extracted.payee,
-      amount:         extracted.amount,
-      due_date:       extracted.due_date,
-      bank_name:      extracted.bank_name,
-      account_number: extracted.account_number,
-      branch_code:    extracted.branch_code,
-      reference:      extracted.reference,
-      raw_message:    rawContent,
-      status:         'pending',
+      user_id:              user.id,
+      payee:                extracted.payee,
+      amount:               extracted.amount,
+      due_date:             extracted.due_date,
+      bank_name:            extracted.bank_name,
+      account_number:       extracted.account_number,
+      branch_code:          extracted.branch_code,
+      reference:            extracted.reference,
+      raw_message:          rawContent,
+      whatsapp_message_id:  message.id,
+      status:               'pending',
     })
 
     const reply = extracted.account_number
@@ -104,12 +125,8 @@ export async function POST(req: NextRequest) {
 
     await sendWhatsApp(from, reply)
 
-    // Meta requires a 200 response quickly
-    return NextResponse.json({ status: 'ok' })
-
   } catch (err) {
     console.error('Webhook error', err)
-    return NextResponse.json({ error: 'internal error' }, { status: 500 })
   }
 }
 
