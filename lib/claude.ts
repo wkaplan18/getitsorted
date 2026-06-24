@@ -12,11 +12,11 @@ export type ExtractedBill = {
   reference: string | null
 }
 
-const EXTRACTION_PROMPT = `You are extracting payment details from a South African invoice or bill.
+const EXTRACTION_PROMPT = `You are extracting payment details from a South African bill, invoice, or payment reminder — including informal WhatsApp messages like "pay ballet R850" or "vet bill R2000".
 
 Extract the following fields and return ONLY valid JSON, nothing else:
 {
-  "payee": "name of the person or company to pay",
+  "payee": "who to pay — use the service/activity description if no name given (e.g. 'Ballet lessons', 'Vet', 'Dog grooming')",
   "amount": 0.00,
   "due_date": "YYYY-MM-DD or null if not found",
   "bank_name": "FNB / Standard Bank / ABSA / Nedbank / Capitec / etc or null",
@@ -26,11 +26,12 @@ Extract the following fields and return ONLY valid JSON, nothing else:
 }
 
 Rules:
-- amount must be a number (no currency symbols)
+- payee: NEVER return null — always use the best available description of who/what to pay
+- amount: must be a number (strip R, ZAR, currency symbols). NEVER return null if a number is present
 - If due date is not explicit but says "end of month", use the last day of the current month
 - branch_code: if not stated, infer from bank (FNB=250655, Standard Bank=051001, ABSA=632005, Nedbank=198765, Capitec=470010)
-- If a field cannot be found, use null
-- Return ONLY the JSON object, no explanation`
+- If bank details not found, return null for bank fields
+- Return ONLY the JSON object, no markdown, no explanation`
 
 function parseJSON(raw: string): ExtractedBill {
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
