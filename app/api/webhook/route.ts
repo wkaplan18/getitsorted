@@ -104,12 +104,51 @@ async function processMessage(message: { id: string; from: string; type: string;
       extracted = await extractBillFromImage(base64, mime as 'image/jpeg' | 'image/png' | 'image/webp')
     }
 
-    if (!extracted?.payee || !extracted?.amount) {
+    if (!extracted?.payee) {
       await sendWhatsApp(from, "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date.")
       return
     }
 
-    // Payee memory
+    // Handle bank details update — find matching pending bills and fill in the details
+    if (extracted.message_type === 'bank_update' && extracted.account_number) {
+      await upsertPayee(user.id, extracted)
+
+      // Update any pending bills for this payee that are missing bank details
+      const { data: matchingBills } = await supabaseAdmin
+        .from('bills')
+        .select('id, payee')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .is('account_number', null)
+
+      const needle = extracted.payee.toLowerCase().trim()
+      const toUpdate = (matchingBills || []).filter(b =>
+        b.payee?.toLowerCase().includes(needle) || needle.includes(b.payee?.toLowerCase() ?? '')
+      )
+
+      for (const bill of toUpdate) {
+        await supabaseAdmin.from('bills').update({
+          bank_name: extracted.bank_name,
+          account_number: extracted.account_number,
+          branch_code: extracted.branch_code,
+          reference: extracted.reference,
+        }).eq('id', bill.id)
+      }
+
+      const updated = toUpdate.length
+      await sendWhatsApp(from,
+        `✅ Banking details saved for ${extracted.payee}!\n${extracted.bank_name ? extracted.bank_name + ' · ' : ''}${extracted.account_number}` +
+        (updated > 0 ? `\n\nUpdated ${updated} pending bill${updated > 1 ? 's' : ''} on your dashboard.` : '\n\nI\'ll use these details for future invoices.')
+      )
+      return
+    }
+
+    if (!extracted.amount) {
+      await sendWhatsApp(from, "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date.")
+      return
+    }
+
+    // Payee memory lookup for new bills
     if (extracted.account_number) {
       await upsertPayee(user.id, extracted)
     } else {
