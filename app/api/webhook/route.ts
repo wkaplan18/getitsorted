@@ -67,9 +67,8 @@ async function processMessage(message: { id: string; from: string; type: string;
       rawContent = message.text?.body ?? ''
       extracted = await extractBillFromText(rawContent)
 
-    } else if (message.type === 'document') {
+    } else if (message.type === 'document' && message.document) {
       const mediaId  = message.document.id
-      const mimeType = message.document.mime_type
       rawContent = `[document: ${message.document.filename ?? mediaId}]`
 
       const { base64, mimeType: mime } = await downloadMedia(mediaId)
@@ -80,7 +79,7 @@ async function processMessage(message: { id: string; from: string; type: string;
         extracted = await extractBillFromImage(base64, mime as 'image/jpeg' | 'image/png' | 'image/webp')
       }
 
-    } else if (message.type === 'image') {
+    } else if (message.type === 'image' && message.image) {
       const mediaId = message.image.id
       rawContent = `[image: ${mediaId}]`
       const { base64, mimeType: mime } = await downloadMedia(mediaId)
