@@ -64,7 +64,7 @@ async function processMessage(message: { id: string; from: string; type: string;
     let rawContent = ''
 
     if (message.type === 'text') {
-      rawContent = message.text.body
+      rawContent = message.text?.body ?? ''
       extracted = await extractBillFromText(rawContent)
 
     } else if (message.type === 'document') {
