@@ -4,7 +4,13 @@ import { useState, useEffect } from 'react'
 import type { Bill } from '@/lib/supabase'
 
 type View = 'login' | 'otp' | 'dashboard'
-type Tab = 'pending' | 'paid'
+type Tab = 'pending' | 'paid' | 'senders'
+
+type TrustedSender = {
+  id: string
+  whatsapp_number: string
+  label: string | null
+}
 
 function SortedLogo({ size = 36 }: { size?: number }) {
   return (
@@ -36,6 +42,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<Tab>('pending')
+  const [senders, setSenders] = useState<TrustedSender[]>([])
+  const [newNumber, setNewNumber] = useState('')
+  const [newLabel, setNewLabel] = useState('')
+  const [addingsender, setAddingSender] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('sorted_phone')
@@ -71,9 +81,33 @@ export default function Home() {
 
   async function fetchBills(p: string) {
     setView('dashboard')
-    const res = await fetch(`/api/bills?phone=${p}`)
+    const [billsRes, sendersRes] = await Promise.all([
+      fetch(`/api/bills?phone=${p}`),
+      fetch(`/api/trusted-senders?phone=${p}`)
+    ])
+    const billsData = await billsRes.json()
+    const sendersData = await sendersRes.json()
+    setBills(billsData.bills || [])
+    setSenders(sendersData.senders || [])
+  }
+
+  async function addSender() {
+    if (!newNumber.trim()) return
+    setAddingSender(true)
+    await fetch('/api/trusted-senders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, trustedNumber: newNumber, label: newLabel })
+    })
+    const res = await fetch(`/api/trusted-senders?phone=${phone}`)
     const data = await res.json()
-    setBills(data.bills || [])
+    setSenders(data.senders || [])
+    setNewNumber(''); setNewLabel(''); setAddingSender(false)
+  }
+
+  async function removeSender(trustedNumber: string) {
+    await fetch(`/api/trusted-senders?phone=${phone}&trustedNumber=${trustedNumber}`, { method: 'DELETE' })
+    setSenders(prev => prev.filter(s => s.whatsapp_number !== trustedNumber))
   }
 
   async function markPaid(id: string) {
@@ -222,24 +256,20 @@ export default function Home() {
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-5">
-          <button
-            onClick={() => setTab('pending')}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
-            style={tab === 'pending'
-              ? { background: '#fff', color: '#111', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }
-              : { color: '#9ca3af', background: 'transparent' }}
-          >
-            Pending {pending.length > 0 && <span className="ml-1.5 text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{pending.length}</span>}
-          </button>
-          <button
-            onClick={() => setTab('paid')}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
-            style={tab === 'paid'
-              ? { background: '#fff', color: '#111', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }
-              : { color: '#9ca3af', background: 'transparent' }}
-          >
-            Paid {paid.length > 0 && <span className="ml-1.5 text-xs bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">{paid.length}</span>}
-          </button>
+          {(['pending', 'paid', 'senders'] as Tab[]).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 capitalize"
+              style={tab === t
+                ? { background: '#fff', color: '#111', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }
+                : { color: '#9ca3af', background: 'transparent' }}
+            >
+              {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{pending.length}</span>}</>}
+              {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">{paid.length}</span>}</>}
+              {t === 'senders' && 'Senders'}
+            </button>
+          ))}
         </div>
 
         {/* Bill list */}
@@ -277,6 +307,58 @@ export default function Home() {
             {paid.map(bill => (
               <BillCard key={bill.id} bill={bill} onDelete={() => deleteBill(bill.id)} />
             ))}
+          </div>
+        )}
+
+        {tab === 'senders' && (
+          <div>
+            <p className="text-xs text-gray-400 mb-4">Add a WhatsApp number (e.g. your partner&apos;s) and their forwarded invoices will appear in your dashboard automatically.</p>
+
+            {/* Add form */}
+            <div className="bg-white rounded-2xl p-4 border border-gray-100 mb-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+              <p className="text-sm font-semibold text-gray-900 mb-3">Add trusted sender</p>
+              <input
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm mb-2 outline-none focus:border-emerald-400 transition-colors"
+                placeholder="082 123 4567"
+                value={newNumber}
+                onChange={e => setNewNumber(e.target.value)}
+              />
+              <input
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm mb-3 outline-none focus:border-emerald-400 transition-colors"
+                placeholder="Label (e.g. Wife, Partner) — optional"
+                value={newLabel}
+                onChange={e => setNewLabel(e.target.value)}
+              />
+              <button
+                onClick={addSender}
+                disabled={addingsender || !newNumber.trim()}
+                className="w-full text-white rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #22c55e 0%, #10b981 50%, #06b6d4 100%)' }}
+              >
+                {addingsender ? 'Adding...' : 'Add sender'}
+              </button>
+            </div>
+
+            {/* Sender list */}
+            {senders.length === 0 && (
+              <p className="text-center text-gray-400 text-sm py-8">No trusted senders yet</p>
+            )}
+            <div className="space-y-2">
+              {senders.map(s => (
+                <div key={s.id} className="bg-white rounded-2xl px-4 py-3 border border-gray-100 flex items-center justify-between" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{s.label || s.whatsapp_number}</p>
+                    {s.label && <p className="text-xs text-gray-400">{s.whatsapp_number}</p>}
+                  </div>
+                  <button
+                    onClick={() => removeSender(s.whatsapp_number)}
+                    className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50"
+                  >
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

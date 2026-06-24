@@ -48,17 +48,34 @@ async function processMessage(message: { id: string; from: string; type: string;
 
     const from: string = message.from  // e.g. "27821234567"
 
-    // Upsert user
-    const { data: user, error: userError } = await supabaseAdmin
-      .from('users')
-      .upsert({ whatsapp_number: from }, { onConflict: 'whatsapp_number' })
-      .select('id')
+    // Check if this number is a trusted sender for another user's account
+    const { data: trustedSender } = await supabaseAdmin
+      .from('trusted_senders')
+      .select('user_id')
+      .eq('whatsapp_number', from)
       .single()
 
-    if (userError || !user) {
-      console.error('User upsert failed', userError)
-      return NextResponse.json({ error: 'user error' }, { status: 500 })
+    let userId: string
+
+    if (trustedSender) {
+      // Route bill to the primary account owner
+      userId = trustedSender.user_id
+    } else {
+      // Upsert as own user
+      const { data: user, error: userError } = await supabaseAdmin
+        .from('users')
+        .upsert({ whatsapp_number: from }, { onConflict: 'whatsapp_number' })
+        .select('id')
+        .single()
+
+      if (userError || !user) {
+        console.error('User upsert failed', userError)
+        return
+      }
+      userId = user.id
     }
+
+    const user = { id: userId }
 
     let extracted: ExtractedBill | null = null
     let rawContent = ''
