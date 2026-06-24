@@ -43,17 +43,11 @@ export async function downloadMedia(mediaId: string): Promise<{ base64: string; 
 }
 
 export function formatBillConfirmation(payee: string, amount: number, dueDate: string | null): string {
-  const due = dueDate
-    ? new Date(dueDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
-    : 'no due date found'
-  return `Got it! ✓\n\nR${amount.toFixed(2)} to *${payee}*\nDue: ${due}\n\nI'll remind you 3 days before.\n${process.env.NEXT_PUBLIC_APP_URL}`
+  return `Got it! ✓\n\nR${amount.toFixed(2)} to *${payee}*\n\nView your dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`
 }
 
 export function formatIncompleteConfirmation(payee: string, amount: number, dueDate: string | null): string {
-  const due = dueDate
-    ? new Date(dueDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
-    : 'no due date'
-  return `Got it — R${amount.toFixed(2)} to *${payee}* (${due}).\n\nI don't have their banking details yet. Add them on the dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`
+  return `Got it — R${amount.toFixed(2)} to *${payee}*.\n\nI don't have their banking details yet. Add them on the dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`
 }
 
 export function formatReminder(payee: string, amount: number, dueDate: string, accountNumber: string | null, reference: string | null): string {
