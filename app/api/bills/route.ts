@@ -56,10 +56,14 @@ export async function PATCH(req: NextRequest) {
 
   // Notify trusted sender when their bill is marked paid
   if (fields.status === 'paid' && bill?.sent_by) {
-    await sendWhatsApp(
-      bill.sent_by,
-      `✅ Paid! R${bill.amount.toFixed(0)} to ${bill.payee} has been marked as paid.`
-    )
+    try {
+      await sendWhatsApp(
+        bill.sent_by,
+        `✅ Paid! R${(bill.amount ?? 0).toFixed(0)} to ${bill.payee} has been marked as paid.`
+      )
+    } catch (err) {
+      console.error('Failed to notify trusted sender:', err)
+    }
   }
 
   return NextResponse.json({ ok: true })
