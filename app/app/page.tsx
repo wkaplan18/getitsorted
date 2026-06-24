@@ -399,6 +399,10 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: Bi
     ? new Date(bill.due_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
     : 'No due date'
 
+  const receivedLabel = new Date(bill.created_at).toLocaleString('en-ZA', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+  })
+
   return (
     <div className={`bg-white rounded-2xl p-4 border transition-all ${
       isPaid ? 'opacity-60 border-gray-100' :
@@ -415,7 +419,7 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: Bi
             {isOverdue && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">Overdue</span>}
             {isPaid && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Paid</span>}
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">Due {dueLabel}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Due {dueLabel} · <span className="text-gray-300">Received {receivedLabel}</span></p>
         </div>
         <div className="flex items-center gap-2 ml-3 flex-shrink-0">
           <p className="text-lg font-bold text-gray-900">R{bill.amount.toFixed(0)}</p>
