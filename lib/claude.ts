@@ -32,6 +32,11 @@ Rules:
 - If a field cannot be found, use null
 - Return ONLY the JSON object, no explanation`
 
+function parseJSON(raw: string): ExtractedBill {
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+  return JSON.parse(cleaned) as ExtractedBill
+}
+
 export async function extractBillFromText(text: string): Promise<ExtractedBill> {
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -43,7 +48,7 @@ export async function extractBillFromText(text: string): Promise<ExtractedBill> 
   })
 
   const raw = (response.content[0] as { type: string; text: string }).text
-  return JSON.parse(raw) as ExtractedBill
+  return parseJSON(raw)
 }
 
 export async function extractBillFromPDF(base64Data: string): Promise<ExtractedBill> {
@@ -67,7 +72,7 @@ export async function extractBillFromPDF(base64Data: string): Promise<ExtractedB
   })
 
   const raw = (response.content[0] as { type: string; text: string }).text
-  return JSON.parse(raw) as ExtractedBill
+  return parseJSON(raw)
 }
 
 export async function extractBillFromImage(base64Data: string, mimeType: 'image/jpeg' | 'image/png' | 'image/webp'): Promise<ExtractedBill> {
@@ -94,5 +99,5 @@ export async function extractBillFromImage(base64Data: string, mimeType: 'image/
   })
 
   const raw = (response.content[0] as { type: string; text: string }).text
-  return JSON.parse(raw) as ExtractedBill
+  return parseJSON(raw)
 }
