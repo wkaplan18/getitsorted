@@ -56,6 +56,7 @@ async function processMessage(message: { id: string; from: string; type: string;
       .single()
 
     let userId: string
+    const sentBy: string | null = trustedSender ? from : null
 
     if (trustedSender) {
       // Route bill to the primary account owner
@@ -123,6 +124,7 @@ async function processMessage(message: { id: string; from: string; type: string;
 
     await supabaseAdmin.from('bills').insert({
       user_id:              user.id,
+      sent_by:              sentBy,
       payee:                extracted.payee,
       amount:               extracted.amount,
       due_date:             extracted.due_date,

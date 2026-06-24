@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendWhatsApp } from '@/lib/whatsapp'
 
 // GET /api/bills?phone=27821234567 — fetch all bills for a user
 export async function GET(req: NextRequest) {
@@ -44,7 +45,22 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'no valid fields to update' }, { status: 400 })
   }
 
-  const { error } = await supabaseAdmin.from('bills').update(update).eq('id', id)
+  const { data: bill, error } = await supabaseAdmin
+    .from('bills')
+    .update(update)
+    .eq('id', id)
+    .select('payee, amount, sent_by')
+    .single()
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Notify trusted sender when their bill is marked paid
+  if (fields.status === 'paid' && bill?.sent_by) {
+    await sendWhatsApp(
+      bill.sent_by,
+      `✅ Paid! R${bill.amount.toFixed(0)} to ${bill.payee} has been marked as paid.`
+    )
+  }
+
   return NextResponse.json({ ok: true })
 }
