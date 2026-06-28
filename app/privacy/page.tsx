@@ -39,7 +39,7 @@ export default function PrivacyPolicy() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Contact</h2>
-            <p>For any privacy-related questions or requests, contact us at <a href="mailto:warren@kaplan.co.za" className="text-emerald-600 hover:underline">warren@kaplan.co.za</a>.</p>
+            <p>For any privacy-related questions or data deletion requests, send us a WhatsApp message at <strong>+27 76 228 0489</strong>.</p>
           </section>
         </div>
       </div>

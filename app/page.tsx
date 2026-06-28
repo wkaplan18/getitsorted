@@ -340,7 +340,7 @@ export default function Home() {
             <svg width="28" height="28" viewBox="0 0 40 40" fill="none"><defs><linearGradient id="lg3" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#22C55E"/><stop offset="50%" stopColor="#10B981"/><stop offset="100%" stopColor="#06B6D4"/></linearGradient><linearGradient id="lg4" x1="8" y1="20" x2="32" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#FFFFFF"/><stop offset="100%" stopColor="#E0FFF8"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#lg3)"/><rect width="40" height="40" rx="11" fill="white" fillOpacity="0.08"/><ellipse cx="20" cy="8" rx="14" ry="6" fill="white" fillOpacity="0.15"/><path d="M9 20.5L16.5 28L31 13" stroke="url(#lg4)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, color: '#fff', fontSize: 18, letterSpacing: '-0.03em' }}>Sorted</span>
           </div>
-          <p style={{ color: '#475569', fontSize: 14, margin: 0 }}>Built in South Africa 🇿🇦 · <a href="mailto:hello@kaplan.co.za" style={{ color: '#64748b', textDecoration: 'none' }}>hello@kaplan.co.za</a></p>
+          <p style={{ color: '#475569', fontSize: 14, margin: 0 }}>Built in South Africa 🇿🇦</p>
           <p style={{ color: '#334155', fontSize: 13, margin: 0 }}>© 2026 Sorted</p>
         </div>
       </footer>
