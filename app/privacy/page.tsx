@@ -39,7 +39,7 @@ export default function PrivacyPolicy() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Contact</h2>
-            <p>For any privacy-related questions or data deletion requests, send us a WhatsApp message at <strong>+27 76 228 0489</strong>.</p>
+            <p>For any privacy-related questions or data deletion requests, contact us through the Sorted app.</p>
           </section>
         </div>
       </div>
