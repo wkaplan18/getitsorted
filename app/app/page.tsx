@@ -243,9 +243,9 @@ export default function Home() {
   )
 
   return (
-    <div className="min-h-screen" style={{ background: '#f8fafc' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #f0fdf4 0%, #f8fafc 45%, #e0f2fe 100%)' }}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10" style={{ boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}>
+      <div className="sticky top-0 z-10" style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(34,197,94,0.12)', boxShadow: '0 1px 20px rgba(16,185,129,0.06)' }}>
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <SortedLogo size={30} />
@@ -256,24 +256,31 @@ export default function Home() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-6 pb-12">
+
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
-            <p className="text-xs text-gray-400 mb-1 font-medium">Total Due</p>
-            <p className="text-xl font-bold text-gray-900" style={{ letterSpacing: '-0.02em' }}>R{totalDue.toFixed(0)}</p>
+          {/* Total Due — hero card */}
+          <div className="rounded-2xl p-4 text-white col-span-1" style={{ background: 'linear-gradient(135deg, #22c55e 0%, #06b6d4 100%)', boxShadow: '0 4px 20px rgba(34,197,94,0.35)' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Total Due</p>
+            <p className="text-xl font-bold" style={{ letterSpacing: '-0.02em' }}>R{totalDue.toFixed(0)}</p>
           </div>
+          {/* Pending */}
           <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
-            <p className="text-xs text-gray-400 mb-1 font-medium">Pending</p>
-            <p className="text-xl font-bold text-gray-900">{pending.length}</p>
+            <p className="text-xs text-gray-600 mb-1 font-medium">Pending</p>
+            <p className="text-xl font-bold" style={{ color: '#f59e0b', letterSpacing: '-0.02em' }}>{pending.length}</p>
           </div>
-          <div className={`rounded-2xl p-4 border ${incomplete.length > 0 ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'}`} style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
-            <p className="text-xs text-gray-400 mb-1 font-medium">Need Details</p>
-            <p className={`text-xl font-bold ${incomplete.length > 0 ? 'text-amber-500' : 'text-gray-900'}`}>{incomplete.length}</p>
+          {/* Need Details */}
+          <div className={`rounded-2xl p-4 border ${incomplete.length > 0 ? 'border-amber-200' : 'border-gray-100 bg-white'}`}
+            style={incomplete.length > 0
+              ? { background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', boxShadow: '0 2px 12px rgba(245,158,11,0.15)' }
+              : { boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+            <p className="text-xs text-gray-600 mb-1 font-medium">Needs Info</p>
+            <p className={`text-xl font-bold ${incomplete.length > 0 ? 'text-amber-500' : 'text-gray-300'}`} style={{ letterSpacing: '-0.02em' }}>{incomplete.length}</p>
           </div>
         </div>
 
         {/* WhatsApp banner */}
-        <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #f0fdf4, #e0f2fe)', border: '1px solid #d1fae5' }}>
+        <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #f0fdf4, #e0f2fe)', border: '1px solid #bbf7d0' }}>
           <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #22c55e, #06b6d4)' }}>
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
@@ -284,7 +291,7 @@ export default function Home() {
               target="_blank"
               rel="noopener noreferrer"
               className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold"
-              style={{ background: '#25D366' }}
+              style={{ background: '#25D366', boxShadow: '0 2px 8px rgba(37,211,102,0.4)' }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
               Open
@@ -293,19 +300,19 @@ export default function Home() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-5">
+        <div className="flex gap-1 rounded-2xl p-1 mb-5" style={{ background: 'rgba(0,0,0,0.05)' }}>
           {(['pending', 'paid', 'payees', 'senders'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 capitalize"
+              className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 capitalize"
               style={tab === t
-                ? { background: '#fff', color: '#111', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }
-                : { color: '#9ca3af', background: 'transparent' }}
+                ? { background: 'linear-gradient(135deg, #22c55e, #06b6d4)', color: '#fff', boxShadow: '0 2px 8px rgba(34,197,94,0.3)' }
+                : { color: '#6b7280', background: 'transparent' }}
             >
-              {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{pending.length}</span>}</>}
-              {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">{paid.length}</span>}</>}
-              {t === 'payees' && <>Payees {payees.length > 0 && <span className="ml-1 text-xs bg-cyan-100 text-cyan-700 px-1.5 py-0.5 rounded-full">{payees.length}</span>}</>}
+              {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={tab === 'pending' ? { background: 'rgba(255,255,255,0.25)', color: '#fff' } : { background: '#dcfce7', color: '#16a34a' }}>{pending.length}</span>}</>}
+              {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={tab === 'paid' ? { background: 'rgba(255,255,255,0.25)', color: '#fff' } : { background: '#e5e7eb', color: '#6b7280' }}>{paid.length}</span>}</>}
+              {t === 'payees' && <>Payees {payees.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={tab === 'payees' ? { background: 'rgba(255,255,255,0.25)', color: '#fff' } : { background: '#cffafe', color: '#0e7490' }}>{payees.length}</span>}</>}
               {t === 'senders' && 'Senders'}
             </button>
           ))}
@@ -377,7 +384,6 @@ export default function Home() {
         {tab === 'senders' && (
           <div>
             <p className="text-xs text-gray-400 mb-4">Add a WhatsApp number (e.g. your partner&apos;s) and their forwarded invoices will appear in your dashboard automatically.</p>
-
             <div className="bg-white rounded-2xl p-4 border border-gray-100 mb-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
               <p className="text-sm font-semibold text-gray-900 mb-3">Add trusted sender</p>
               <input
@@ -401,7 +407,6 @@ export default function Home() {
                 {addingsender ? 'Adding...' : 'Add sender'}
               </button>
             </div>
-
             {senders.length === 0 && (
               <p className="text-center text-gray-400 text-sm py-8">No trusted senders yet</p>
             )}
@@ -472,28 +477,43 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   })
 
+  const borderColor = isPaid ? '#d1fae5' : isIncomplete ? '#fcd34d' : '#a7f3d0'
+  const cardBg = isPaid ? 'rgba(240,253,244,0.6)' : isIncomplete ? 'rgba(255,251,235,0.8)' : '#ffffff'
+
   return (
-    <div className={`bg-white rounded-2xl p-4 border transition-all ${
-      isPaid ? 'opacity-70 border-gray-100' :
-      isIncomplete ? 'border-amber-200' :
-      'border-gray-100'
-    }`} style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+    <div className="rounded-2xl p-4 border-l-4 transition-all"
+      style={{
+        background: cardBg,
+        borderLeft: `4px solid ${borderColor}`,
+        border: `1px solid ${isPaid ? '#d1fae5' : isIncomplete ? '#fde68a' : '#e5e7eb'}`,
+        borderLeftWidth: '4px',
+        borderLeftColor: borderColor,
+        boxShadow: isPaid
+          ? '0 2px 12px rgba(16,185,129,0.06)'
+          : isIncomplete
+          ? '0 2px 12px rgba(245,158,11,0.1)'
+          : '0 2px 16px rgba(34,197,94,0.07)',
+      }}>
 
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-gray-900">{bill.payee}</p>
-            {isIncomplete && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Needs details</span>}
-            {isPaid && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Paid</span>}
+            {isIncomplete && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#fef3c7', color: '#b45309' }}>Needs details</span>
+            )}
+            {isPaid && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>Paid</span>
+            )}
           </div>
           {isPaid && paidLabel ? (
-            <p className="text-xs text-emerald-600 mt-0.5 font-medium">Paid {paidLabel}</p>
+            <p className="text-xs font-semibold mt-0.5" style={{ color: '#16a34a' }}>Paid {paidLabel}</p>
           ) : (
-            <p className="text-xs text-gray-300 mt-0.5">Received {receivedLabel}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Received {receivedLabel}</p>
           )}
         </div>
         <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-          <p className="text-lg font-bold text-gray-900">R{bill.amount.toFixed(0)}</p>
+          <p className="text-lg font-bold" style={{ color: isPaid ? '#6b7280' : '#111827', letterSpacing: '-0.02em' }}>R{bill.amount.toFixed(0)}</p>
           {confirmDelete ? (
             <div className="flex items-center gap-1">
               <button
@@ -516,7 +536,7 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
       </div>
 
       {bill.account_number && (
-        <div className="rounded-xl p-3 text-xs space-y-1.5 mb-3" style={{ background: '#f8fafc' }}>
+        <div className="rounded-xl p-3 text-xs space-y-1.5 mb-3" style={{ background: 'linear-gradient(135deg, rgba(240,253,244,0.8), rgba(224,242,254,0.8))', border: '1px solid rgba(34,197,94,0.12)' }}>
           {bill.bank_name && <DetailRow label="Bank" value={bill.bank_name} />}
           <DetailRow label="Account" value={bill.account_number} onCopy={() => copy(bill.account_number!, 'account')} copied={copied === 'account'} />
           {bill.branch_code && <DetailRow label="Branch" value={bill.branch_code} onCopy={() => copy(bill.branch_code!, 'branch')} copied={copied === 'branch'} />}
@@ -525,7 +545,7 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
       )}
 
       {isIncomplete && showBankForm && (
-        <div className="bg-amber-50 rounded-xl p-3 mb-3 space-y-2">
+        <div className="rounded-xl p-3 mb-3 space-y-2" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
           {(['bank_name', 'account_number', 'branch_code', 'reference'] as const).map(field => (
             <input
               key={field}
@@ -553,7 +573,8 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
           {isIncomplete ? (
             <button
               onClick={() => setShowBankForm(v => !v)}
-              className="flex-1 border border-amber-300 text-amber-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-amber-50 transition-colors"
+              className="flex-1 text-xs font-semibold py-2.5 rounded-xl transition-colors"
+              style={{ background: showBankForm ? '#fef3c7' : '#fffbeb', color: '#b45309', border: '1px solid #fcd34d' }}
             >
               {showBankForm ? 'Cancel' : '+ Add bank details'}
             </button>
@@ -562,13 +583,14 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
               <button
                 onClick={onPayStitch}
                 className="flex-1 text-white text-xs font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #22c55e, #06b6d4)' }}
+                style={{ background: 'linear-gradient(135deg, #22c55e, #06b6d4)', boxShadow: '0 2px 8px rgba(34,197,94,0.3)' }}
               >
                 Pay via Stitch
               </button>
               <button
                 onClick={onPaid}
-                className="border border-gray-200 text-gray-500 text-xs font-medium py-2.5 px-4 rounded-xl hover:bg-gray-50 transition-colors"
+                className="text-xs font-medium py-2.5 px-4 rounded-xl transition-colors"
+                style={{ border: '1px solid #d1fae5', color: '#16a34a', background: '#f0fdf4' }}
               >
                 Mark paid
               </button>
@@ -581,7 +603,8 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
         <button
           onClick={handleRepeat}
           disabled={repeating}
-          className="w-full border border-gray-200 text-gray-500 text-xs font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+          className="w-full text-xs font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+          style={{ background: 'linear-gradient(135deg, rgba(240,253,244,1), rgba(224,242,254,1))', color: '#0e7490', border: '1px solid #a5f3fc' }}
         >
           <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           {repeating ? 'Adding...' : 'Pay again'}
@@ -600,23 +623,30 @@ function PayeeCard({ payee }: { payee: Payee }) {
     setTimeout(() => setCopied(null), 1500)
   }
 
-  const hasDetails = payee.account_number
+  const avatarColors = [
+    'linear-gradient(135deg, #22c55e, #06b6d4)',
+    'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+    'linear-gradient(135deg, #f59e0b, #ef4444)',
+    'linear-gradient(135deg, #ec4899, #8b5cf6)',
+    'linear-gradient(135deg, #06b6d4, #3b82f6)',
+  ]
+  const avatarBg = avatarColors[payee.display_name.charCodeAt(0) % avatarColors.length]
 
   return (
-    <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 transition-all" style={{ boxShadow: '0 2px 16px rgba(34,197,94,0.06)', borderLeft: '4px solid #a7f3d0' }}>
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold text-white" style={{ background: 'linear-gradient(135deg, #22c55e, #06b6d4)' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold text-white" style={{ background: avatarBg }}>
           {payee.display_name.charAt(0).toUpperCase()}
         </div>
         <div>
           <p className="font-semibold text-gray-900 text-sm">{payee.display_name}</p>
-          {payee.bank_name && <p className="text-xs text-gray-400">{payee.bank_name}</p>}
+          {payee.bank_name && <p className="text-xs text-gray-500">{payee.bank_name}</p>}
         </div>
       </div>
 
-      {hasDetails ? (
-        <div className="rounded-xl p-3 text-xs space-y-1.5" style={{ background: '#f8fafc' }}>
-          <DetailRow label="Account" value={payee.account_number!} onCopy={() => copy(payee.account_number!, 'account')} copied={copied === 'account'} />
+      {payee.account_number ? (
+        <div className="rounded-xl p-3 text-xs space-y-1.5" style={{ background: 'linear-gradient(135deg, rgba(240,253,244,0.8), rgba(224,242,254,0.8))', border: '1px solid rgba(34,197,94,0.12)' }}>
+          <DetailRow label="Account" value={payee.account_number} onCopy={() => copy(payee.account_number!, 'account')} copied={copied === 'account'} />
           {payee.branch_code && <DetailRow label="Branch" value={payee.branch_code} onCopy={() => copy(payee.branch_code!, 'branch')} copied={copied === 'branch'} />}
           {payee.default_reference && <DetailRow label="Reference" value={payee.default_reference} onCopy={() => copy(payee.default_reference!, 'ref')} copied={copied === 'ref'} />}
         </div>
@@ -630,11 +660,17 @@ function PayeeCard({ payee }: { payee: Payee }) {
 function DetailRow({ label, value, onCopy, copied }: { label: string; value: string; onCopy?: () => void; copied?: boolean }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-gray-400">{label}</span>
+      <span className="text-gray-500 font-medium">{label}</span>
       <div className="flex items-center gap-2">
         <span className="font-mono text-gray-700">{value}</span>
         {onCopy && (
-          <button onClick={onCopy} className="text-xs font-semibold transition-colors" style={{ color: copied ? '#22c55e' : '#06b6d4' }}>
+          <button
+            onClick={onCopy}
+            className="text-xs font-semibold px-2 py-0.5 rounded-lg transition-all"
+            style={copied
+              ? { background: '#dcfce7', color: '#16a34a' }
+              : { background: '#cffafe', color: '#0e7490' }}
+          >
             {copied ? '✓ Copied' : 'Copy'}
           </button>
         )}
