@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { Bill, Payee } from '@/lib/supabase'
+import type { Bill } from '@/lib/supabase'
 
 type View = 'login' | 'otp' | 'dashboard'
-type Tab = 'pending' | 'paid' | 'payees' | 'senders'
+type Tab = 'pending' | 'paid' | 'senders'
 
 type TrustedSender = {
   id: string
@@ -39,7 +39,6 @@ export default function Home() {
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [bills, setBills] = useState<Bill[]>([])
-  const [payees, setPayees] = useState<Payee[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<Tab>('pending')
@@ -82,17 +81,14 @@ export default function Home() {
 
   async function fetchAll(p: string) {
     setView('dashboard')
-    const [billsRes, sendersRes, payeesRes] = await Promise.all([
+    const [billsRes, sendersRes] = await Promise.all([
       fetch(`/api/bills?phone=${p}`),
       fetch(`/api/trusted-senders?phone=${p}`),
-      fetch(`/api/payees?phone=${p}`),
     ])
     const billsData = await billsRes.json()
     const sendersData = await sendersRes.json()
-    const payeesData = await payeesRes.json()
     setBills(billsData.bills || [])
     setSenders(sendersData.senders || [])
-    setPayees(payeesData.payees || [])
   }
 
   async function addSender() {
@@ -172,7 +168,7 @@ export default function Home() {
 
   function logout() {
     localStorage.removeItem('sorted_phone')
-    setPhone(''); setBills([]); setPayees([]); setView('login')
+    setPhone(''); setBills([]); setView('login')
   }
 
   const pending = bills.filter(b => b.status === 'pending')
@@ -295,7 +291,7 @@ export default function Home() {
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-2xl p-1 mb-5" style={{ background: 'rgba(0,0,0,0.05)' }}>
-          {(['pending', 'paid', 'payees', 'senders'] as Tab[]).map(t => (
+          {(['pending', 'paid', 'senders'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -306,7 +302,6 @@ export default function Home() {
             >
               {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#16a34a' }}>{pending.length}</span>}</>}
               {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#e5e7eb', color: '#6b7280' }}>{paid.length}</span>}</>}
-              {t === 'payees' && <>Payees {payees.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#cffafe', color: '#0e7490' }}>{payees.length}</span>}</>}
               {t === 'senders' && 'Senders'}
             </button>
           ))}
@@ -352,24 +347,6 @@ export default function Home() {
                 onDelete={() => deleteBill(bill.id)}
                 onRepeat={() => repeatBill(bill)}
               />
-            ))}
-          </div>
-        )}
-
-        {/* Payees */}
-        {tab === 'payees' && (
-          <div className="space-y-3">
-            {payees.length === 0 && (
-              <div className="text-center py-16 text-gray-400">
-                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f0fdf4, #e0f2fe)' }}>
-                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </div>
-                <p className="text-sm font-semibold text-gray-500">No payees yet</p>
-                <p className="text-xs mt-1">Payees are saved automatically when you forward invoices with bank details</p>
-              </div>
-            )}
-            {payees.map(p => (
-              <PayeeCard key={p.id} payee={p} />
             ))}
           </div>
         )}
@@ -608,48 +585,6 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
   )
 }
 
-function PayeeCard({ payee }: { payee: Payee }) {
-  const [copied, setCopied] = useState<string | null>(null)
-
-  function copy(val: string, label: string) {
-    navigator.clipboard.writeText(val)
-    setCopied(label)
-    setTimeout(() => setCopied(null), 1500)
-  }
-
-  const avatarColors = [
-    'linear-gradient(135deg, #22c55e, #06b6d4)',
-    'linear-gradient(135deg, #8b5cf6, #06b6d4)',
-    'linear-gradient(135deg, #f59e0b, #ef4444)',
-    'linear-gradient(135deg, #ec4899, #8b5cf6)',
-    'linear-gradient(135deg, #06b6d4, #3b82f6)',
-  ]
-  const avatarBg = avatarColors[payee.display_name.charCodeAt(0) % avatarColors.length]
-
-  return (
-    <div className="bg-white rounded-2xl p-4 border border-gray-100 transition-all" style={{ boxShadow: '0 2px 16px rgba(34,197,94,0.06)', borderLeft: '4px solid #a7f3d0' }}>
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold text-white" style={{ background: avatarBg }}>
-          {payee.display_name.charAt(0).toUpperCase()}
-        </div>
-        <div>
-          <p className="font-semibold text-gray-900 text-sm">{payee.display_name}</p>
-          {payee.bank_name && <p className="text-xs text-gray-500">{payee.bank_name}</p>}
-        </div>
-      </div>
-
-      {payee.account_number ? (
-        <div className="rounded-xl p-3 text-xs space-y-1.5" style={{ background: 'linear-gradient(135deg, rgba(240,253,244,0.8), rgba(224,242,254,0.8))', border: '1px solid rgba(34,197,94,0.12)' }}>
-          <DetailRow label="Account" value={payee.account_number} onCopy={() => copy(payee.account_number!.replace(/\D/g, ''), 'account')} copied={copied === 'account'} />
-          {payee.branch_code && <DetailRow label="Branch" value={payee.branch_code} onCopy={() => copy(payee.branch_code!, 'branch')} copied={copied === 'branch'} />}
-          {payee.default_reference && <DetailRow label="Reference" value={payee.default_reference} onCopy={() => copy(payee.default_reference!, 'ref')} copied={copied === 'ref'} />}
-        </div>
-      ) : (
-        <p className="text-xs text-gray-400 italic">No bank details on file yet</p>
-      )}
-    </div>
-  )
-}
 
 function DetailRow({ label, value, onCopy, copied }: { label: string; value: string; onCopy?: () => void; copied?: boolean }) {
   return (
