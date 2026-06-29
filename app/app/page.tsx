@@ -259,23 +259,17 @@ export default function Home() {
 
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          {/* Total Due — hero card */}
-          <div className="rounded-2xl p-4 text-white col-span-1" style={{ background: 'linear-gradient(135deg, #22c55e 0%, #06b6d4 100%)', boxShadow: '0 4px 20px rgba(34,197,94,0.35)' }}>
-            <p className="text-xs font-medium mb-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Total Due</p>
-            <p className="text-xl font-bold" style={{ letterSpacing: '-0.02em' }}>R{totalDue.toFixed(0)}</p>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)', borderLeft: '3px solid #22c55e' }}>
+            <p className="text-xs text-gray-600 mb-1 font-medium">Total Due</p>
+            <p className="text-xl font-bold" style={{ color: '#16a34a', letterSpacing: '-0.02em' }}>R{totalDue.toFixed(0)}</p>
           </div>
-          {/* Pending */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)', borderLeft: '3px solid #f59e0b' }}>
             <p className="text-xs text-gray-600 mb-1 font-medium">Pending</p>
-            <p className="text-xl font-bold" style={{ color: '#f59e0b', letterSpacing: '-0.02em' }}>{pending.length}</p>
+            <p className="text-xl font-bold" style={{ color: '#d97706', letterSpacing: '-0.02em' }}>{pending.length}</p>
           </div>
-          {/* Need Details */}
-          <div className={`rounded-2xl p-4 border ${incomplete.length > 0 ? 'border-amber-200' : 'border-gray-100 bg-white'}`}
-            style={incomplete.length > 0
-              ? { background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', boxShadow: '0 2px 12px rgba(245,158,11,0.15)' }
-              : { boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)', borderLeft: `3px solid ${incomplete.length > 0 ? '#f59e0b' : '#e5e7eb'}` }}>
             <p className="text-xs text-gray-600 mb-1 font-medium">Needs Info</p>
-            <p className={`text-xl font-bold ${incomplete.length > 0 ? 'text-amber-500' : 'text-gray-300'}`} style={{ letterSpacing: '-0.02em' }}>{incomplete.length}</p>
+            <p className="text-xl font-bold" style={{ color: incomplete.length > 0 ? '#d97706' : '#d1d5db', letterSpacing: '-0.02em' }}>{incomplete.length}</p>
           </div>
         </div>
 
@@ -307,12 +301,12 @@ export default function Home() {
               onClick={() => setTab(t)}
               className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 capitalize"
               style={tab === t
-                ? { background: 'linear-gradient(135deg, #22c55e, #06b6d4)', color: '#fff', boxShadow: '0 2px 8px rgba(34,197,94,0.3)' }
+                ? { background: '#fff', color: '#16a34a', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderBottom: '2px solid #22c55e' }
                 : { color: '#6b7280', background: 'transparent' }}
             >
-              {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={tab === 'pending' ? { background: 'rgba(255,255,255,0.25)', color: '#fff' } : { background: '#dcfce7', color: '#16a34a' }}>{pending.length}</span>}</>}
-              {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={tab === 'paid' ? { background: 'rgba(255,255,255,0.25)', color: '#fff' } : { background: '#e5e7eb', color: '#6b7280' }}>{paid.length}</span>}</>}
-              {t === 'payees' && <>Payees {payees.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={tab === 'payees' ? { background: 'rgba(255,255,255,0.25)', color: '#fff' } : { background: '#cffafe', color: '#0e7490' }}>{payees.length}</span>}</>}
+              {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#16a34a' }}>{pending.length}</span>}</>}
+              {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#e5e7eb', color: '#6b7280' }}>{paid.length}</span>}</>}
+              {t === 'payees' && <>Payees {payees.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#cffafe', color: '#0e7490' }}>{payees.length}</span>}</>}
               {t === 'senders' && 'Senders'}
             </button>
           ))}
