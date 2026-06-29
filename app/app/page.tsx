@@ -532,7 +532,7 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
       {bill.account_number && (
         <div className="rounded-xl p-3 text-xs space-y-1.5 mb-3" style={{ background: 'linear-gradient(135deg, rgba(240,253,244,0.8), rgba(224,242,254,0.8))', border: '1px solid rgba(34,197,94,0.12)' }}>
           {bill.bank_name && <DetailRow label="Bank" value={bill.bank_name} />}
-          <DetailRow label="Account" value={bill.account_number} onCopy={() => copy(bill.account_number!, 'account')} copied={copied === 'account'} />
+          <DetailRow label="Account" value={bill.account_number} onCopy={() => copy(bill.account_number!.replace(/\D/g, ''), 'account')} copied={copied === 'account'} />
           {bill.branch_code && <DetailRow label="Branch" value={bill.branch_code} onCopy={() => copy(bill.branch_code!, 'branch')} copied={copied === 'branch'} />}
           {bill.reference && <DetailRow label="Reference" value={bill.reference} onCopy={() => copy(bill.reference!, 'ref')} copied={copied === 'ref'} />}
         </div>
@@ -640,7 +640,7 @@ function PayeeCard({ payee }: { payee: Payee }) {
 
       {payee.account_number ? (
         <div className="rounded-xl p-3 text-xs space-y-1.5" style={{ background: 'linear-gradient(135deg, rgba(240,253,244,0.8), rgba(224,242,254,0.8))', border: '1px solid rgba(34,197,94,0.12)' }}>
-          <DetailRow label="Account" value={payee.account_number} onCopy={() => copy(payee.account_number!, 'account')} copied={copied === 'account'} />
+          <DetailRow label="Account" value={payee.account_number} onCopy={() => copy(payee.account_number!.replace(/\D/g, ''), 'account')} copied={copied === 'account'} />
           {payee.branch_code && <DetailRow label="Branch" value={payee.branch_code} onCopy={() => copy(payee.branch_code!, 'branch')} copied={copied === 'branch'} />}
           {payee.default_reference && <DetailRow label="Reference" value={payee.default_reference} onCopy={() => copy(payee.default_reference!, 'ref')} copied={copied === 'ref'} />}
         </div>
