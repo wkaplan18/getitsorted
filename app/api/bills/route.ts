@@ -33,6 +33,29 @@ export async function DELETE(req: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
+// POST /api/bills — create a new pending bill (used by "Pay again")
+export async function POST(req: NextRequest) {
+  const { phone, payee, amount, bank_name, account_number, branch_code, reference } = await req.json()
+  if (!phone || !payee || !amount) return NextResponse.json({ error: 'phone, payee, amount required' }, { status: 400 })
+
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('whatsapp_number', phone)
+    .single()
+
+  if (!user) return NextResponse.json({ error: 'user not found' }, { status: 404 })
+
+  const { data: bill, error } = await supabaseAdmin
+    .from('bills')
+    .insert({ user_id: user.id, payee, amount, bank_name, account_number, branch_code, reference, status: 'pending' })
+    .select('*')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ bill })
+}
+
 // PATCH /api/bills — update a bill (status, bank details, etc.)
 export async function PATCH(req: NextRequest) {
   const { id, ...fields } = await req.json()
@@ -40,6 +63,7 @@ export async function PATCH(req: NextRequest) {
 
   const allowed = ['status', 'bank_name', 'account_number', 'branch_code', 'reference']
   const update = Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.includes(k)))
+  if (fields.status === 'paid') update.paid_at = new Date().toISOString()
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no valid fields to update' }, { status: 400 })

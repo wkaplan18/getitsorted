@@ -39,7 +39,8 @@ create table if not exists bills (
   stitch_payment_id text,       -- set when Stitch payment is initiated
   raw_message text,
   reminder_sent boolean default false,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  paid_at timestamptz
 );
 
 create index if not exists bills_user_status on bills(user_id, status);

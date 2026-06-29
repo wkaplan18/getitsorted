@@ -27,6 +27,7 @@ export type Bill = {
   raw_message: string | null
   reminder_sent: boolean
   created_at: string
+  paid_at: string | null
 }
 
 export type Payee = {

@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { Bill } from '@/lib/supabase'
+import type { Bill, Payee } from '@/lib/supabase'
 
 type View = 'login' | 'otp' | 'dashboard'
-type Tab = 'pending' | 'paid' | 'senders'
+type Tab = 'pending' | 'paid' | 'payees' | 'senders'
 
 type TrustedSender = {
   id: string
@@ -39,6 +39,7 @@ export default function Home() {
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [bills, setBills] = useState<Bill[]>([])
+  const [payees, setPayees] = useState<Payee[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<Tab>('pending')
@@ -49,7 +50,7 @@ export default function Home() {
 
   useEffect(() => {
     const saved = localStorage.getItem('sorted_phone')
-    if (saved) { setPhone(saved); fetchBills(saved) }
+    if (saved) { setPhone(saved); fetchAll(saved) }
   }, [])
 
   async function sendOTP() {
@@ -75,20 +76,23 @@ export default function Home() {
     setLoading(false)
     if (res.ok) {
       localStorage.setItem('sorted_phone', phone)
-      await fetchBills(phone)
+      await fetchAll(phone)
     } else setError('Invalid or expired code.')
   }
 
-  async function fetchBills(p: string) {
+  async function fetchAll(p: string) {
     setView('dashboard')
-    const [billsRes, sendersRes] = await Promise.all([
+    const [billsRes, sendersRes, payeesRes] = await Promise.all([
       fetch(`/api/bills?phone=${p}`),
-      fetch(`/api/trusted-senders?phone=${p}`)
+      fetch(`/api/trusted-senders?phone=${p}`),
+      fetch(`/api/payees?phone=${p}`),
     ])
     const billsData = await billsRes.json()
     const sendersData = await sendersRes.json()
+    const payeesData = await payeesRes.json()
     setBills(billsData.bills || [])
     setSenders(sendersData.senders || [])
+    setPayees(payeesData.payees || [])
   }
 
   async function addSender() {
@@ -116,7 +120,8 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status: 'paid' })
     })
-    setBills(prev => prev.map(b => b.id === id ? { ...b, status: 'paid' } : b))
+    const now = new Date().toISOString()
+    setBills(prev => prev.map(b => b.id === id ? { ...b, status: 'paid', paid_at: now } : b))
   }
 
   async function deleteBill(id: string) {
@@ -135,6 +140,27 @@ export default function Home() {
     else alert(data.error ?? 'Could not initiate payment')
   }
 
+  async function repeatBill(bill: Bill) {
+    const res = await fetch('/api/bills', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone,
+        payee: bill.payee,
+        amount: bill.amount,
+        bank_name: bill.bank_name,
+        account_number: bill.account_number,
+        branch_code: bill.branch_code,
+        reference: bill.reference,
+      })
+    })
+    const data = await res.json()
+    if (data.bill) {
+      setBills(prev => [data.bill, ...prev])
+      setTab('pending')
+    }
+  }
+
   function saveBankDetails(billId: string, details: Partial<Bill>) {
     fetch('/api/bills', {
       method: 'PATCH',
@@ -146,7 +172,7 @@ export default function Home() {
 
   function logout() {
     localStorage.removeItem('sorted_phone')
-    setPhone(''); setBills([]); setView('login')
+    setPhone(''); setBills([]); setPayees([]); setView('login')
   }
 
   const pending = bills.filter(b => b.status === 'pending')
@@ -251,28 +277,41 @@ export default function Home() {
           <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #22c55e, #06b6d4)' }}>
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
-          <p className="text-gray-600 text-xs">Forward any invoice to <strong className="text-gray-900">{process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || 'your Sorted number'}</strong></p>
+          <p className="text-gray-600 text-xs flex-1">Forward any invoice to <strong className="text-gray-900">{process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || 'your Sorted number'}</strong></p>
+          {process.env.NEXT_PUBLIC_WHATSAPP_NUMBER && (
+            <a
+              href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold"
+              style={{ background: '#25D366' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              Open
+            </a>
+          )}
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-5">
-          {(['pending', 'paid', 'senders'] as Tab[]).map(t => (
+          {(['pending', 'paid', 'payees', 'senders'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 capitalize"
+              className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 capitalize"
               style={tab === t
                 ? { background: '#fff', color: '#111', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }
                 : { color: '#9ca3af', background: 'transparent' }}
             >
               {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{pending.length}</span>}</>}
               {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">{paid.length}</span>}</>}
+              {t === 'payees' && <>Payees {payees.length > 0 && <span className="ml-1 text-xs bg-cyan-100 text-cyan-700 px-1.5 py-0.5 rounded-full">{payees.length}</span>}</>}
               {t === 'senders' && 'Senders'}
             </button>
           ))}
         </div>
 
-        {/* Bill list */}
+        {/* Pending bills */}
         {tab === 'pending' && (
           <div className="space-y-3">
             {pending.length === 0 && (
@@ -297,6 +336,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* Paid bills */}
         {tab === 'paid' && (
           <div className="space-y-3">
             {paid.length === 0 && (
@@ -305,16 +345,39 @@ export default function Home() {
               </div>
             )}
             {paid.map(bill => (
-              <BillCard key={bill.id} bill={bill} onDelete={() => deleteBill(bill.id)} />
+              <BillCard
+                key={bill.id}
+                bill={bill}
+                onDelete={() => deleteBill(bill.id)}
+                onRepeat={() => repeatBill(bill)}
+              />
             ))}
           </div>
         )}
 
+        {/* Payees */}
+        {tab === 'payees' && (
+          <div className="space-y-3">
+            {payees.length === 0 && (
+              <div className="text-center py-16 text-gray-400">
+                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f0fdf4, #e0f2fe)' }}>
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+                <p className="text-sm font-semibold text-gray-500">No payees yet</p>
+                <p className="text-xs mt-1">Payees are saved automatically when you forward invoices with bank details</p>
+              </div>
+            )}
+            {payees.map(p => (
+              <PayeeCard key={p.id} payee={p} />
+            ))}
+          </div>
+        )}
+
+        {/* Senders */}
         {tab === 'senders' && (
           <div>
             <p className="text-xs text-gray-400 mb-4">Add a WhatsApp number (e.g. your partner&apos;s) and their forwarded invoices will appear in your dashboard automatically.</p>
 
-            {/* Add form */}
             <div className="bg-white rounded-2xl p-4 border border-gray-100 mb-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
               <p className="text-sm font-semibold text-gray-900 mb-3">Add trusted sender</p>
               <input
@@ -339,7 +402,6 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Sender list */}
             {senders.length === 0 && (
               <p className="text-center text-gray-400 text-sm py-8">No trusted senders yet</p>
             )}
@@ -371,13 +433,15 @@ type BillCardProps = {
   onPaid?: () => void
   onPayStitch?: () => void
   onDelete?: () => void
+  onRepeat?: () => void
   onSaveBankDetails?: (details: Partial<Bill>) => void
 }
 
-function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: BillCardProps) {
+function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDetails }: BillCardProps) {
   const [copied, setCopied] = useState<string | null>(null)
   const [showBankForm, setShowBankForm] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [repeating, setRepeating] = useState(false)
   const [bankFields, setBankFields] = useState({
     bank_name: bill.bank_name ?? '',
     account_number: bill.account_number ?? '',
@@ -394,9 +458,15 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: Bi
     setTimeout(() => setCopied(null), 1500)
   }
 
-  const dueLabel = bill.due_date
-    ? new Date(bill.due_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
-    : 'No due date'
+  async function handleRepeat() {
+    setRepeating(true)
+    await onRepeat?.()
+    setRepeating(false)
+  }
+
+  const paidLabel = bill.paid_at
+    ? new Date(bill.paid_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null
 
   const receivedLabel = new Date(bill.created_at).toLocaleString('en-ZA', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
@@ -404,7 +474,7 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: Bi
 
   return (
     <div className={`bg-white rounded-2xl p-4 border transition-all ${
-      isPaid ? 'opacity-60 border-gray-100' :
+      isPaid ? 'opacity-70 border-gray-100' :
       isIncomplete ? 'border-amber-200' :
       'border-gray-100'
     }`} style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
@@ -416,7 +486,11 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: Bi
             {isIncomplete && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Needs details</span>}
             {isPaid && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Paid</span>}
           </div>
-          <p className="text-xs text-gray-300 mt-0.5">Received {receivedLabel}</p>
+          {isPaid && paidLabel ? (
+            <p className="text-xs text-emerald-600 mt-0.5 font-medium">Paid {paidLabel}</p>
+          ) : (
+            <p className="text-xs text-gray-300 mt-0.5">Received {receivedLabel}</p>
+          )}
         </div>
         <div className="flex items-center gap-2 ml-3 flex-shrink-0">
           <p className="text-lg font-bold text-gray-900">R{bill.amount.toFixed(0)}</p>
@@ -501,6 +575,53 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onSaveBankDetails }: Bi
             </>
           )}
         </div>
+      )}
+
+      {isPaid && onRepeat && (
+        <button
+          onClick={handleRepeat}
+          disabled={repeating}
+          className="w-full border border-gray-200 text-gray-500 text-xs font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+        >
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          {repeating ? 'Adding...' : 'Pay again'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function PayeeCard({ payee }: { payee: Payee }) {
+  const [copied, setCopied] = useState<string | null>(null)
+
+  function copy(val: string, label: string) {
+    navigator.clipboard.writeText(val)
+    setCopied(label)
+    setTimeout(() => setCopied(null), 1500)
+  }
+
+  const hasDetails = payee.account_number
+
+  return (
+    <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold text-white" style={{ background: 'linear-gradient(135deg, #22c55e, #06b6d4)' }}>
+          {payee.display_name.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <p className="font-semibold text-gray-900 text-sm">{payee.display_name}</p>
+          {payee.bank_name && <p className="text-xs text-gray-400">{payee.bank_name}</p>}
+        </div>
+      </div>
+
+      {hasDetails ? (
+        <div className="rounded-xl p-3 text-xs space-y-1.5" style={{ background: '#f8fafc' }}>
+          <DetailRow label="Account" value={payee.account_number!} onCopy={() => copy(payee.account_number!, 'account')} copied={copied === 'account'} />
+          {payee.branch_code && <DetailRow label="Branch" value={payee.branch_code} onCopy={() => copy(payee.branch_code!, 'branch')} copied={copied === 'branch'} />}
+          {payee.default_reference && <DetailRow label="Reference" value={payee.default_reference} onCopy={() => copy(payee.default_reference!, 'ref')} copied={copied === 'ref'} />}
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400 italic">No bank details on file yet</p>
       )}
     </div>
   )
