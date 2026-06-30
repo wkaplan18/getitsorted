@@ -3,6 +3,31 @@
 
 const BASE = 'https://graph.facebook.com/v19.0'
 
+async function sendTemplate(to: string, name: string, params: string[]) {
+  const res = await fetch(`${BASE}/${process.env.META_PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.META_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name,
+        language: { code: 'en_US' },
+        components: [{
+          type: 'body',
+          parameters: params.map(text => ({ type: 'text', text })),
+        }],
+      },
+    }),
+  })
+  if (!res.ok) throw new Error(`Meta API error ${res.status}: ${await res.text()}`)
+  return res.json()
+}
+
 async function sendMessage(to: string, body: string) {
   const res = await fetch(`${BASE}/${process.env.META_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
@@ -19,6 +44,10 @@ async function sendMessage(to: string, body: string) {
   })
   if (!res.ok) throw new Error(`Meta API error ${res.status}: ${await res.text()}`)
   return res.json()
+}
+
+export async function sendWhatsAppTemplate(to: string, name: string, params: string[]) {
+  return sendTemplate(to, name, params)
 }
 
 export async function sendWhatsApp(to: string, message: string) {

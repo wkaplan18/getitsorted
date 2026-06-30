@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendWhatsApp } from '@/lib/whatsapp'
+import { sendWhatsAppTemplate } from '@/lib/whatsapp'
 
 // GET /api/bills?phone=27821234567 — fetch all bills for a user
 export async function GET(req: NextRequest) {
@@ -82,9 +82,10 @@ export async function PATCH(req: NextRequest) {
   // Notify trusted sender when their bill is marked paid
   if (fields.status === 'paid' && bill?.sent_by) {
     try {
-      await sendWhatsApp(
+      await sendWhatsAppTemplate(
         bill.sent_by,
-        `✅ Paid! R${(bill.amount ?? 0).toFixed(0)} to ${bill.payee} has been marked as paid.`
+        'bill_paid_notification',
+        [(bill.amount ?? 0).toFixed(0), bill.payee]
       )
     } catch (err) {
       console.error('Failed to notify trusted sender:', err)
