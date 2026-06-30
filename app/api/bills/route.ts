@@ -64,6 +64,7 @@ export async function PATCH(req: NextRequest) {
   const allowed = ['status', 'bank_name', 'account_number', 'branch_code', 'reference']
   const update = Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.includes(k)))
   if (fields.status === 'paid') update.paid_at = new Date().toISOString()
+  if (fields.status === 'pending') update.paid_at = null
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no valid fields to update' }, { status: 400 })

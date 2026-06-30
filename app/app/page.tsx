@@ -120,6 +120,15 @@ export default function Home() {
     setBills(prev => prev.map(b => b.id === id ? { ...b, status: 'paid', paid_at: now } : b))
   }
 
+  async function markUnpaid(id: string) {
+    await fetch('/api/bills', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: 'pending' })
+    })
+    setBills(prev => prev.map(b => b.id === id ? { ...b, status: 'pending', paid_at: null } : b))
+  }
+
   async function deleteBill(id: string) {
     await fetch(`/api/bills?id=${id}`, { method: 'DELETE' })
     setBills(prev => prev.filter(b => b.id !== id))
@@ -346,6 +355,7 @@ export default function Home() {
                 bill={bill}
                 onDelete={() => deleteBill(bill.id)}
                 onRepeat={() => repeatBill(bill)}
+                onUnpaid={() => markUnpaid(bill.id)}
               />
             ))}
           </div>
@@ -418,18 +428,21 @@ export default function Home() {
 
 type BillCardProps = {
   bill: Bill
-  onPaid?: () => void
+  onPaid?: () => Promise<void> | void
+  onUnpaid?: () => Promise<void> | void
   onPayStitch?: () => void
   onDelete?: () => void
   onRepeat?: () => void
   onSaveBankDetails?: (details: Partial<Bill>) => void
 }
 
-function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDetails }: BillCardProps) {
+function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onSaveBankDetails }: BillCardProps) {
   const [copied, setCopied] = useState<string | null>(null)
   const [showBankForm, setShowBankForm] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [repeating, setRepeating] = useState(false)
+  const [markingPaid, setMarkingPaid] = useState(false)
+  const [markingUnpaid, setMarkingUnpaid] = useState(false)
   const [bankFields, setBankFields] = useState({
     bank_name: bill.bank_name ?? '',
     account_number: bill.account_number ?? '',
@@ -450,6 +463,20 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
     setRepeating(true)
     await onRepeat?.()
     setRepeating(false)
+  }
+
+  async function handleMarkPaid() {
+    if (markingPaid) return
+    setMarkingPaid(true)
+    await onPaid?.()
+    setMarkingPaid(false)
+  }
+
+  async function handleMarkUnpaid() {
+    if (markingUnpaid) return
+    setMarkingUnpaid(true)
+    await onUnpaid?.()
+    setMarkingUnpaid(false)
   }
 
   const paidLabel = bill.paid_at
@@ -571,27 +598,42 @@ function BillCard({ bill, onPaid, onPayStitch, onDelete, onRepeat, onSaveBankDet
                 Pay via Stitch
               </button>
               <button
-                onClick={onPaid}
-                className="text-xs font-medium py-2.5 px-4 rounded-xl transition-colors"
+                onClick={handleMarkPaid}
+                disabled={markingPaid}
+                className="text-xs font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50"
                 style={{ border: '1px solid #d1fae5', color: '#16a34a', background: '#f0fdf4' }}
               >
-                Mark paid
+                {markingPaid ? 'Saving…' : 'Mark paid'}
               </button>
             </>
           )}
         </div>
       )}
 
-      {isPaid && onRepeat && (
-        <button
-          onClick={handleRepeat}
-          disabled={repeating}
-          className="w-full text-xs font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
-          style={{ background: 'linear-gradient(135deg, rgba(240,253,244,1), rgba(224,242,254,1))', color: '#0e7490', border: '1px solid #a5f3fc' }}
-        >
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          {repeating ? 'Adding...' : 'Pay again'}
-        </button>
+      {isPaid && (
+        <div className="flex gap-2">
+          {onRepeat && (
+            <button
+              onClick={handleRepeat}
+              disabled={repeating}
+              className="flex-1 text-xs font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+              style={{ background: 'linear-gradient(135deg, rgba(240,253,244,1), rgba(224,242,254,1))', color: '#0e7490', border: '1px solid #a5f3fc' }}
+            >
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              {repeating ? 'Adding...' : 'Pay again'}
+            </button>
+          )}
+          {onUnpaid && (
+            <button
+              onClick={handleMarkUnpaid}
+              disabled={markingUnpaid}
+              className="text-xs font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50"
+              style={{ border: '1px solid #fde68a', color: '#b45309', background: '#fffbeb' }}
+            >
+              {markingUnpaid ? 'Saving…' : 'Mark unpaid'}
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
