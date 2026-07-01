@@ -232,7 +232,7 @@ export default function Home() {
           <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 32 }}>
             {[
               { num: '01', color: '#22c55e', icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>, title: 'Forward on WhatsApp', body: 'Your swim coach sends a PDF. Your dog groomer sends a photo. Your wife texts "pay vet R2000." Forward anything to your Sorted number.', dark: false },
-              { num: '02', color: '#fbbf24', icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>, title: 'AI reads it instantly', body: 'Claude AI extracts the amount, due date, and bank details — from PDFs, photos, or plain text. Payee bank details are remembered forever after the first time.', dark: false },
+              { num: '02', color: '#fbbf24', icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>, title: 'AI reads it instantly', body: 'AI extracts the amount, due date, and bank details — from PDFs, photos, or plain text. Payee bank details are remembered forever after the first time.', dark: false },
               { num: '03', color: '#22c55e', icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM16 16a2 2 0 110-4 2 2 0 010 4z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M1 7l1.5-3h19L23 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>, title: 'Pay. Get sorted.', body: 'Your dashboard shows everything due. Copy EFT details with one tap. WhatsApp reminder 3 days before every due date.', dark: true },
             ].map(step => (
               <div key={step.num} style={{ position: 'relative', background: step.dark ? step.color : '#f8fafc', borderRadius: 20, padding: 28, border: step.dark ? 'none' : '1px solid #f1f5f9', overflow: 'hidden' }}>
@@ -273,6 +273,16 @@ export default function Home() {
                 <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, margin: 0 }}>{f.body}</p>
               </div>
             ))}
+            {/* Family feature — full width */}
+            <div className="feature-card" style={{ gridColumn: '1 / -1', background: '#f0fdf4', borderRadius: 20, padding: 24, border: '1px solid #dcfce7', display: 'flex', alignItems: 'flex-start', gap: 20 }}>
+              <div style={{ width: 48, height: 48, background: '#22c55e', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="9" cy="7" r="4" stroke="white" strokeWidth="2"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <div>
+                <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: '#0f172a', marginBottom: 8, fontSize: 16 }}>Your family sends it — it lands in your dashboard</h3>
+                <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, margin: 0, maxWidth: 640 }}>Your wife spots a school trip invoice. Your teenager needs to pay a club fee. They simply forward it to your Sorted number on WhatsApp — it lands straight in your dashboard with the amount, due date, and banking details already read and ready. No chasing, no group chats, no forgotten payments.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
