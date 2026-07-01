@@ -115,7 +115,7 @@ export default function Home() {
               <span style={{ color: '#22c55e' }}>Finally sorted.</span>
             </h1>
             <p style={{ fontSize: 18, color: '#64748b', lineHeight: 1.7, marginBottom: 32, maxWidth: 420 }}>
-              Forward invoices to WhatsApp. AI reads the amount, due date, and banking details automatically. Pay from your dashboard with one tap.
+              Forward invoices to WhatsApp — or let your wife, partner, or kids send bills straight to your dashboard. AI reads everything. Pay in one tap.
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 40 }}>
               <Link href="/app" className="btn-primary" style={{ background: '#22c55e', color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 16, padding: '14px 24px', borderRadius: 12, textDecoration: 'none', transition: 'background 0.2s' }}>
@@ -126,7 +126,7 @@ export default function Home() {
               </a>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {['Works on WhatsApp', 'All SA banks', 'EFT ready', 'No app to download'].map(t => (
+              {['Works on WhatsApp', 'Family can send bills too', 'All SA banks', 'No app to download'].map(t => (
                 <span key={t} style={{ fontSize: 12, background: '#fff', border: '1px solid #e2e8f0', color: '#64748b', padding: '6px 12px', borderRadius: 999 }}>{t}</span>
               ))}
             </div>
@@ -191,14 +191,14 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Floating due badge */}
+              {/* Floating family-sent badge */}
               <div style={{ position: 'absolute', left: -32, top: 64, background: '#fff', borderRadius: 12, padding: '8px 12px', boxShadow: '0 4px 20px rgba(15,23,42,0.1)', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 28, height: 28, background: '#fef3c7', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="14" height="14" fill="none" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 2a6 6 0 110 12A6 6 0 0110 4zm-.75 2.75v4l3.5 2-.5.87-4-2.37V6.75h1z" fill="#F59E0B"/></svg>
+                <div style={{ width: 28, height: 28, background: '#f0fdf4', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="9" cy="7" r="4" stroke="#22c55e" strokeWidth="2"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
                 <div>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Due Friday</p>
-                  <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>Dog grooming · R350</p>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sara sent you a bill</p>
+                  <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>Pay vet · R2,000</p>
                 </div>
               </div>
             </div>
