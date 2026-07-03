@@ -46,11 +46,20 @@ export default function Home() {
   const [newNumber, setNewNumber] = useState('')
   const [newLabel, setNewLabel] = useState('')
   const [addingsender, setAddingSender] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('sorted_phone')
     if (saved) { setPhone(saved); fetchAll(saved) }
+    setIsMobile(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent))
   }, [])
+
+  const sortedNumberDigits = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').replace(/\D/g, '')
+  const whatsappLoginUrl = `https://wa.me/${sortedNumberDigits}?text=${encodeURIComponent('LOGIN')}`
+
+  function openWhatsApp() {
+    window.open(whatsappLoginUrl, '_blank')
+  }
 
   function sendOTP() {
     setError('')
@@ -58,8 +67,10 @@ export default function Home() {
     if (!clean) { setError('Enter your WhatsApp number.'); return }
     setPhone(clean)
     setView('otp')
-    const sortedNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').replace(/\D/g, '')
-    window.open(`https://wa.me/${sortedNumber}?text=${encodeURIComponent('LOGIN')}`, '_blank')
+    // On mobile this reliably opens the WhatsApp app. On desktop it can pop open an
+    // unexpected WhatsApp Web QR screen for anyone who hasn't linked it — so there we
+    // just show plain instructions instead and let them open WhatsApp Web on their own terms.
+    if (isMobile) openWhatsApp()
   }
 
   async function verifyOTP() {
@@ -214,13 +225,32 @@ export default function Home() {
   if (view === 'otp') return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)' }}>
       <div className="bg-white rounded-3xl p-8 w-full max-w-sm" style={{ boxShadow: '0 20px 60px rgba(16,185,129,0.12), 0 4px 16px rgba(0,0,0,0.06)' }}>
-        <div className="flex items-center gap-3 mb-7">
+        <div className="flex items-center gap-3 mb-5">
           <SortedLogo size={42} />
           <div>
             <h1 className="text-xl font-bold text-gray-900" style={{ letterSpacing: '-0.03em' }}>Check WhatsApp</h1>
             <p className="text-gray-400 text-xs">Send the message, then enter the code you get back</p>
           </div>
         </div>
+
+        {isMobile ? (
+          <p className="text-gray-500 text-xs mb-4">
+            We opened WhatsApp for you — hit send there, then come back and enter the code below.
+          </p>
+        ) : (
+          <div className="rounded-xl p-3 mb-4 bg-gray-50 border border-gray-100">
+            <p className="text-gray-600 text-xs mb-2">
+              On your phone, open WhatsApp and send <strong className="text-gray-900">LOGIN</strong> to <strong className="text-gray-900">{process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || 'the Sorted number'}</strong>.
+            </p>
+            <button
+              onClick={openWhatsApp}
+              className="text-emerald-600 text-xs font-semibold hover:text-emerald-700"
+            >
+              Or open WhatsApp Web instead →
+            </button>
+          </div>
+        )}
+
         <input
           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-emerald-400 text-center text-2xl tracking-widest"
           placeholder="000000"

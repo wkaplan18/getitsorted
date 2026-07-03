@@ -53,13 +53,13 @@ async function processMessage(message: { id: string; from: string; type: string;
     // requested this way rather than pushed out when someone visits the website.
     if (message.type === 'text' && message.text?.body.trim().toLowerCase() === 'login') {
       const otp = Math.floor(100000 + Math.random() * 900000).toString()
-      const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+      const expires = new Date(Date.now() + 2 * 60 * 1000).toISOString()
 
       await supabaseAdmin
         .from('users')
         .upsert({ whatsapp_number: from, otp, otp_expires_at: expires }, { onConflict: 'whatsapp_number' })
 
-      await sendWhatsApp(from, `Your Sorted login code is *${otp}*\n\nExpires in 10 minutes.`)
+      await sendWhatsApp(from, `Your Sorted login code is *${otp}*\n\nExpires in 2 minutes.`)
       return
     }
 
