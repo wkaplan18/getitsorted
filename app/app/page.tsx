@@ -52,17 +52,14 @@ export default function Home() {
     if (saved) { setPhone(saved); fetchAll(saved) }
   }, [])
 
-  async function sendOTP() {
-    setLoading(true); setError('')
+  function sendOTP() {
+    setError('')
     const clean = phone.replace(/\D/g, '').replace(/^0/, '27')
-    const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: clean })
-    })
-    setLoading(false)
-    if (res.ok) { setPhone(clean); setView('otp') }
-    else setError('Could not send code. Check your number.')
+    if (!clean) { setError('Enter your WhatsApp number.'); return }
+    setPhone(clean)
+    setView('otp')
+    const sortedNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').replace(/\D/g, '')
+    window.open(`https://wa.me/${sortedNumber}?text=${encodeURIComponent('LOGIN')}`, '_blank')
   }
 
   async function verifyOTP() {
@@ -205,11 +202,10 @@ export default function Home() {
         {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
         <button
           onClick={sendOTP}
-          disabled={loading}
           className="w-full text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, #22c55e 0%, #10b981 50%, #06b6d4 100%)' }}
         >
-          {loading ? 'Sending...' : 'Send WhatsApp Code'}
+          Get Code via WhatsApp
         </button>
       </div>
     </div>
@@ -222,7 +218,7 @@ export default function Home() {
           <SortedLogo size={42} />
           <div>
             <h1 className="text-xl font-bold text-gray-900" style={{ letterSpacing: '-0.03em' }}>Check WhatsApp</h1>
-            <p className="text-gray-400 text-xs">Code sent to {phone}</p>
+            <p className="text-gray-400 text-xs">Send the message, then enter the code you get back</p>
           </div>
         </div>
         <input

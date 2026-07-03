@@ -1,32 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendWhatsApp, formatOTP } from '@/lib/whatsapp'
 
-function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
-}
-
-// POST /api/auth { phone: "27821234567" } — send OTP
-export async function POST(req: NextRequest) {
-  const { phone } = await req.json()
-  if (!phone) return NextResponse.json({ error: 'phone required' }, { status: 400 })
-
-  const otp = generateOTP()
-  const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString()
-
-  const { error } = await supabaseAdmin
-    .from('users')
-    .upsert({
-      whatsapp_number: phone,
-      otp,
-      otp_expires_at: expires
-    }, { onConflict: 'whatsapp_number' })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  await sendWhatsApp(phone, formatOTP(otp))
-  return NextResponse.json({ ok: true })
-}
+// The OTP itself is generated and sent by the webhook when the user messages
+// "LOGIN" to the Sorted WhatsApp number — see app/api/webhook/route.ts.
+// This route only verifies the code they were sent.
 
 // PUT /api/auth { phone, otp } — verify OTP, return session
 export async function PUT(req: NextRequest) {

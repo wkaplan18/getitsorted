@@ -48,6 +48,21 @@ async function processMessage(message: { id: string; from: string; type: string;
 
     const from: string = message.from  // e.g. "27821234567"
 
+    // "LOGIN" command — generates and sends a dashboard OTP. WhatsApp only allows
+    // free-form text replies to numbers that messaged us first, so the OTP has to be
+    // requested this way rather than pushed out when someone visits the website.
+    if (message.type === 'text' && message.text?.body.trim().toLowerCase() === 'login') {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString()
+      const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+
+      await supabaseAdmin
+        .from('users')
+        .upsert({ whatsapp_number: from, otp, otp_expires_at: expires }, { onConflict: 'whatsapp_number' })
+
+      await sendWhatsApp(from, `Your Sorted login code is *${otp}*\n\nExpires in 10 minutes.`)
+      return
+    }
+
     // Check if this number is a trusted sender for another user's account
     const { data: trustedSender } = await supabaseAdmin
       .from('trusted_senders')

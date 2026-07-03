@@ -88,6 +88,3 @@ export function formatReminder(payee: string, amount: number, dueDate: string, a
   return msg
 }
 
-export function formatOTP(otp: string): string {
-  return `Your Sorted login code is: *${otp}*\n\nExpires in 10 minutes.`
-}
