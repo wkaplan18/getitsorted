@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 
 type UserRow = {
   id: string
@@ -11,6 +11,28 @@ type UserRow = {
   pending: number
   paid: number
   overdue: number
+}
+
+type Invoice = {
+  id: string
+  payee: string
+  amount: number
+  status: 'pending' | 'paid' | 'overdue'
+  due_date: string | null
+  created_at: string
+  sender: { number: string | null; label: string | null; isOwner: boolean }
+}
+
+function senderLabel(sender: Invoice['sender']) {
+  if (sender.isOwner) return `${sender.number} (self)`
+  if (sender.label) return `${sender.label} (${sender.number})`
+  return sender.number || 'Unknown'
+}
+
+function statusColor(status: Invoice['status']) {
+  if (status === 'paid') return 'text-emerald-600 bg-emerald-50'
+  if (status === 'overdue') return 'text-red-600 bg-red-50'
+  return 'text-amber-600 bg-amber-50'
 }
 
 function SortedLogo({ size = 32 }: { size?: number }) {
@@ -43,6 +65,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<UserRow[]>([])
   const [totalInvoices, setTotalInvoices] = useState(0)
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  const [invoicesByUser, setInvoicesByUser] = useState<Record<string, Invoice[]>>({})
+  const [invoicesLoading, setInvoicesLoading] = useState<string | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('sorted_admin_token')
@@ -90,6 +115,21 @@ export default function AdminPage() {
     localStorage.removeItem('sorted_admin_token')
     setToken(null)
     setUsers([])
+  }
+
+  async function toggleUser(userId: string) {
+    if (expandedUserId === userId) {
+      setExpandedUserId(null)
+      return
+    }
+    setExpandedUserId(userId)
+    if (invoicesByUser[userId] || !token) return
+    setInvoicesLoading(userId)
+    const res = await fetch(`/api/admin?userId=${userId}`, { headers: { Authorization: `Bearer ${token}` } })
+    setInvoicesLoading(null)
+    if (!res.ok) return
+    const data = await res.json()
+    setInvoicesByUser((prev) => ({ ...prev, [userId]: data.invoices || [] }))
   }
 
   if (!token) {
@@ -169,15 +209,65 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className="border-t border-gray-100">
-                  <td className="px-4 py-3 text-gray-800">{u.name || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{u.whatsapp_number}</td>
-                  <td className="px-4 py-3 text-gray-600">{new Date(u.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-right text-gray-800 font-medium">{u.total}</td>
-                  <td className="px-4 py-3 text-right text-gray-600">{u.pending}</td>
-                  <td className="px-4 py-3 text-right text-gray-600">{u.paid}</td>
-                  <td className="px-4 py-3 text-right text-gray-600">{u.overdue}</td>
-                </tr>
+                <Fragment key={u.id}>
+                  <tr
+                    onClick={() => toggleUser(u.id)}
+                    className="border-t border-gray-100 cursor-pointer hover:bg-gray-50"
+                  >
+                    <td className="px-4 py-3 text-gray-800">
+                      <span className="inline-block mr-1 text-gray-400 transition-transform" style={{ transform: expandedUserId === u.id ? 'rotate(90deg)' : 'none' }}>
+                        ›
+                      </span>
+                      {u.name || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{u.whatsapp_number}</td>
+                    <td className="px-4 py-3 text-gray-600">{new Date(u.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-right text-gray-800 font-medium">{u.total}</td>
+                    <td className="px-4 py-3 text-right text-gray-600">{u.pending}</td>
+                    <td className="px-4 py-3 text-right text-gray-600">{u.paid}</td>
+                    <td className="px-4 py-3 text-right text-gray-600">{u.overdue}</td>
+                  </tr>
+                  {expandedUserId === u.id && (
+                    <tr className="border-t border-gray-100 bg-gray-50/60">
+                      <td colSpan={7} className="px-4 py-4">
+                        {invoicesLoading === u.id && <p className="text-sm text-gray-400">Loading invoices…</p>}
+                        {invoicesLoading !== u.id && (invoicesByUser[u.id]?.length ?? 0) === 0 && (
+                          <p className="text-sm text-gray-400">No invoices yet.</p>
+                        )}
+                        {invoicesLoading !== u.id && (invoicesByUser[u.id]?.length ?? 0) > 0 && (
+                          <table className="w-full text-sm">
+                            <thead className="text-gray-400 text-left">
+                              <tr>
+                                <th className="px-2 py-1 font-medium">Payee</th>
+                                <th className="px-2 py-1 font-medium text-right">Amount</th>
+                                <th className="px-2 py-1 font-medium">Status</th>
+                                <th className="px-2 py-1 font-medium">Due</th>
+                                <th className="px-2 py-1 font-medium">Sent</th>
+                                <th className="px-2 py-1 font-medium">Sent by</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {invoicesByUser[u.id].map((inv) => (
+                                <tr key={inv.id} className="border-t border-gray-100">
+                                  <td className="px-2 py-2 text-gray-800">{inv.payee}</td>
+                                  <td className="px-2 py-2 text-right text-gray-800">R{inv.amount.toFixed(2)}</td>
+                                  <td className="px-2 py-2">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(inv.status)}`}>
+                                      {inv.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-2 py-2 text-gray-600">{inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}</td>
+                                  <td className="px-2 py-2 text-gray-600">{new Date(inv.created_at).toLocaleDateString()}</td>
+                                  <td className="px-2 py-2 text-gray-600">{senderLabel(inv.sender)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
               {users.length === 0 && (
                 <tr>

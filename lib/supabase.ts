@@ -26,6 +26,8 @@ export type Bill = {
   stitch_payment_id: string | null
   raw_message: string | null
   reminder_sent: boolean
+  sent_by: string | null          // whatsapp number of the trusted sender who forwarded it, null if the account owner sent it
+  whatsapp_message_id: string | null
   created_at: string
   paid_at: string | null
 }
