@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import confetti from 'canvas-confetti'
 import type { Bill } from '@/lib/supabase'
 
 type View = 'login' | 'otp' | 'dashboard'
@@ -73,6 +74,13 @@ export default function Home() {
     if (isMobile) openWhatsApp()
   }
 
+  function celebrateLogin() {
+    const colors = ['#22C55E', '#10B981', '#06B6D4', '#F59E0B', '#EC4899']
+    confetti({ particleCount: 120, spread: 100, origin: { y: 0.6 }, colors })
+    confetti({ particleCount: 80, angle: 60, spread: 80, origin: { x: 0, y: 0.7 }, colors })
+    confetti({ particleCount: 80, angle: 120, spread: 80, origin: { x: 1, y: 0.7 }, colors })
+  }
+
   async function verifyOTP() {
     setLoading(true); setError('')
     const res = await fetch('/api/auth', {
@@ -84,6 +92,7 @@ export default function Home() {
     if (res.ok) {
       localStorage.setItem('sorted_phone', phone)
       await fetchAll(phone)
+      celebrateLogin()
     } else setError('Invalid or expired code.')
   }
 
