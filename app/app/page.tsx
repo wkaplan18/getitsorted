@@ -58,7 +58,7 @@ export default function Home() {
   const whatsappLoginUrl = `https://wa.me/${sortedNumberDigits}?text=${encodeURIComponent('LOGIN')}`
 
   function openWhatsApp() {
-    window.open(whatsappLoginUrl, '_blank')
+    window.location.href = whatsappLoginUrl
   }
 
   function sendOTP() {
