@@ -12,7 +12,7 @@ function PaySuccessContent() {
   useEffect(() => {
     if (!billId) { setStatus('error'); return }
 
-    const token = localStorage.getItem('sorted_token')
+    const token = localStorage.getItem('sorted_token') ?? sessionStorage.getItem('sorted_token')
     if (!token) { router.push('/'); return }
 
     fetch('/api/bills', {

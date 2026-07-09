@@ -5,14 +5,16 @@ import { NextRequest } from 'next/server'
 // required (Bearer header) by every user-facing API route. Same HMAC pattern as
 // the admin token in /api/admin.
 const SECRET = process.env.CRON_SECRET || 'sorted-admin-fallback-secret'
-const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+const REMEMBER_TTL_MS = 365 * 24 * 60 * 60 * 1000 // "keep me logged in" — 1 year
+const SHORT_TTL_MS = 24 * 60 * 60 * 1000 // unticked — backstop for the browser-session storage
 
 function sign(payload: string) {
   return crypto.createHmac('sha256', SECRET).update(payload).digest('hex')
 }
 
-export function makeSessionToken(phone: string): string {
-  const payload = `${phone}:${Date.now() + TOKEN_TTL_MS}`
+export function makeSessionToken(phone: string, remember = true): string {
+  const ttl = remember ? REMEMBER_TTL_MS : SHORT_TTL_MS
+  const payload = `${phone}:${Date.now() + ttl}`
   return `${payload}:${sign(payload)}`
 }
 

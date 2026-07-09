@@ -7,9 +7,16 @@ import type { Bill, Reminder } from '@/lib/supabase'
 type View = 'login' | 'otp' | 'dashboard'
 type Tab = 'pending' | 'paid' | 'reminders' | 'senders'
 
-// Session token issued by /api/auth — sent as a Bearer header on every API call
+// Session token issued by /api/auth — sent as a Bearer header on every API call.
+// Lives in localStorage when "Keep me logged in" was ticked (survives closing the
+// browser), otherwise in sessionStorage (cleared when the browser closes).
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('sorted_token') ?? sessionStorage.getItem('sorted_token')
+}
+
 function authHeaders(): Record<string, string> {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('sorted_token') : null
+  const t = getToken()
   return t ? { Authorization: `Bearer ${t}` } : {}
 }
 
@@ -55,11 +62,11 @@ export default function Home() {
   const [newLabel, setNewLabel] = useState('')
   const [addingsender, setAddingSender] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true)
 
   useEffect(() => {
     const saved = localStorage.getItem('sorted_phone')
-    const savedToken = localStorage.getItem('sorted_token')
-    if (saved && savedToken) { setPhone(saved); fetchAll(saved) }
+    if (saved && getToken()) { setPhone(saved); fetchAll(saved) }
     setIsMobile(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent))
   }, [])
 
@@ -94,13 +101,18 @@ export default function Home() {
     const res = await fetch('/api/auth', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, otp })
+      body: JSON.stringify({ phone, otp, remember: keepLoggedIn })
     })
     setLoading(false)
     if (res.ok) {
       const data = await res.json()
       localStorage.setItem('sorted_phone', phone)
-      if (data.token) localStorage.setItem('sorted_token', data.token)
+      if (data.token) {
+        localStorage.removeItem('sorted_token')
+        sessionStorage.removeItem('sorted_token')
+        const store = keepLoggedIn ? localStorage : sessionStorage
+        store.setItem('sorted_token', data.token)
+      }
       await fetchAll(phone)
       celebrateLogin()
     } else setError('Invalid or expired code.')
@@ -232,6 +244,7 @@ export default function Home() {
   function logout() {
     localStorage.removeItem('sorted_phone')
     localStorage.removeItem('sorted_token')
+    sessionStorage.removeItem('sorted_token')
     setPhone(''); setBills([]); setReminders([]); setView('login')
   }
 
@@ -307,6 +320,15 @@ export default function Home() {
           onChange={e => setOtp(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && verifyOTP()}
         />
+        <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={keepLoggedIn}
+            onChange={e => setKeepLoggedIn(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 accent-emerald-500"
+          />
+          <span className="text-gray-600 text-xs">Keep me logged in on this device</span>
+        </label>
         {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
         <button
           onClick={verifyOTP}

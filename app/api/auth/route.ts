@@ -8,7 +8,7 @@ import { makeSessionToken } from '@/lib/session'
 
 // PUT /api/auth { phone, otp } — verify OTP, return session
 export async function PUT(req: NextRequest) {
-  const { phone, otp } = await req.json()
+  const { phone, otp, remember } = await req.json()
   if (!phone || !otp) return NextResponse.json({ error: 'phone and otp required' }, { status: 400 })
 
   const { data: user } = await supabaseAdmin
@@ -27,5 +27,5 @@ export async function PUT(req: NextRequest) {
     .update({ otp: null, otp_expires_at: null })
     .eq('id', user.id)
 
-  return NextResponse.json({ ok: true, phone, token: makeSessionToken(phone) })
+  return NextResponse.json({ ok: true, phone, token: makeSessionToken(phone, remember !== false) })
 }
