@@ -2,10 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import confetti from 'canvas-confetti'
-import type { Bill } from '@/lib/supabase'
+import type { Bill, Reminder } from '@/lib/supabase'
 
 type View = 'login' | 'otp' | 'dashboard'
-type Tab = 'pending' | 'paid' | 'senders'
+type Tab = 'pending' | 'paid' | 'reminders' | 'senders'
+
+// Session token issued by /api/auth — sent as a Bearer header on every API call
+function authHeaders(): Record<string, string> {
+  const t = typeof window !== 'undefined' ? localStorage.getItem('sorted_token') : null
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
 
 type TrustedSender = {
   id: string
@@ -40,6 +46,7 @@ export default function Home() {
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [bills, setBills] = useState<Bill[]>([])
+  const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<Tab>('pending')
@@ -51,7 +58,8 @@ export default function Home() {
 
   useEffect(() => {
     const saved = localStorage.getItem('sorted_phone')
-    if (saved) { setPhone(saved); fetchAll(saved) }
+    const savedToken = localStorage.getItem('sorted_token')
+    if (saved && savedToken) { setPhone(saved); fetchAll(saved) }
     setIsMobile(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent))
   }, [])
 
@@ -90,7 +98,9 @@ export default function Home() {
     })
     setLoading(false)
     if (res.ok) {
+      const data = await res.json()
       localStorage.setItem('sorted_phone', phone)
+      if (data.token) localStorage.setItem('sorted_token', data.token)
       await fetchAll(phone)
       celebrateLogin()
     } else setError('Invalid or expired code.')
@@ -98,14 +108,33 @@ export default function Home() {
 
   async function fetchAll(p: string) {
     setView('dashboard')
-    const [billsRes, sendersRes] = await Promise.all([
-      fetch(`/api/bills?phone=${p}`),
-      fetch(`/api/trusted-senders?phone=${p}`),
+    const [billsRes, sendersRes, remindersRes] = await Promise.all([
+      fetch(`/api/bills?phone=${p}`, { headers: authHeaders() }),
+      fetch(`/api/trusted-senders?phone=${p}`, { headers: authHeaders() }),
+      fetch(`/api/reminder-notes?phone=${p}`, { headers: authHeaders() }),
     ])
+    // Expired or missing session — back to login
+    if (billsRes.status === 401) { logout(); return }
     const billsData = await billsRes.json()
     const sendersData = await sendersRes.json()
+    const remindersData = await remindersRes.json()
     setBills(billsData.bills || [])
     setSenders(sendersData.senders || [])
+    setReminders(remindersData.reminders || [])
+  }
+
+  async function dismissReminder(id: string, dismissed: boolean) {
+    await fetch('/api/reminder-notes', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ id, dismissed })
+    })
+    setReminders(prev => prev.map(r => r.id === id ? { ...r, dismissed } : r))
+  }
+
+  async function deleteReminder(id: string) {
+    await fetch(`/api/reminder-notes?id=${id}`, { method: 'DELETE', headers: authHeaders() })
+    setReminders(prev => prev.filter(r => r.id !== id))
   }
 
   async function addSender() {
@@ -113,24 +142,33 @@ export default function Home() {
     setAddingSender(true)
     await fetch('/api/trusted-senders', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, trustedNumber: newNumber, label: newLabel })
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ trustedNumber: newNumber, label: newLabel })
     })
-    const res = await fetch(`/api/trusted-senders?phone=${phone}`)
+    const res = await fetch(`/api/trusted-senders?phone=${phone}`, { headers: authHeaders() })
     const data = await res.json()
     setSenders(data.senders || [])
     setNewNumber(''); setNewLabel(''); setAddingSender(false)
   }
 
   async function removeSender(trustedNumber: string) {
-    await fetch(`/api/trusted-senders?phone=${phone}&trustedNumber=${trustedNumber}`, { method: 'DELETE' })
+    await fetch(`/api/trusted-senders?trustedNumber=${trustedNumber}`, { method: 'DELETE', headers: authHeaders() })
     setSenders(prev => prev.filter(s => s.whatsapp_number !== trustedNumber))
+  }
+
+  async function confirmBill(id: string) {
+    await fetch('/api/bills', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ id, unconfirmed: false })
+    })
+    setBills(prev => prev.map(b => b.id === id ? { ...b, unconfirmed: false } : b))
   }
 
   async function markPaid(id: string) {
     await fetch('/api/bills', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ id, status: 'paid' })
     })
     const now = new Date().toISOString()
@@ -140,22 +178,22 @@ export default function Home() {
   async function markUnpaid(id: string) {
     await fetch('/api/bills', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ id, status: 'pending' })
     })
     setBills(prev => prev.map(b => b.id === id ? { ...b, status: 'pending', paid_at: null } : b))
   }
 
   async function deleteBill(id: string) {
-    await fetch(`/api/bills?id=${id}`, { method: 'DELETE' })
+    await fetch(`/api/bills?id=${id}`, { method: 'DELETE', headers: authHeaders() })
     setBills(prev => prev.filter(b => b.id !== id))
   }
 
   async function payViaStitch(billId: string) {
     const res = await fetch('/api/pay', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ billId, phone })
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ billId })
     })
     const data = await res.json()
     if (data.redirectUrl) window.location.href = data.redirectUrl
@@ -165,9 +203,8 @@ export default function Home() {
   async function repeatBill(bill: Bill) {
     const res = await fetch('/api/bills', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
-        phone,
         payee: bill.payee,
         amount: bill.amount,
         bank_name: bill.bank_name,
@@ -186,7 +223,7 @@ export default function Home() {
   function saveBankDetails(billId: string, details: Partial<Bill>) {
     fetch('/api/bills', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ id: billId, ...details })
     })
     setBills(prev => prev.map(b => b.id === billId ? { ...b, ...details } : b))
@@ -194,13 +231,15 @@ export default function Home() {
 
   function logout() {
     localStorage.removeItem('sorted_phone')
-    setPhone(''); setBills([]); setView('login')
+    localStorage.removeItem('sorted_token')
+    setPhone(''); setBills([]); setReminders([]); setView('login')
   }
 
   const pending = bills.filter(b => b.status === 'pending')
   const paid = bills.filter(b => b.status === 'paid')
   const incomplete = pending.filter(b => !b.account_number)
   const totalDue = pending.reduce((s, b) => s + b.amount, 0)
+  const activeReminders = reminders.filter(r => !r.dismissed)
 
   if (view === 'login') return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)' }}>
@@ -335,7 +374,7 @@ export default function Home() {
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-2xl p-1 mb-5" style={{ background: 'rgba(0,0,0,0.05)' }}>
-          {(['pending', 'paid', 'senders'] as Tab[]).map(t => (
+          {(['pending', 'paid', 'reminders', 'senders'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -346,6 +385,7 @@ export default function Home() {
             >
               {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#16a34a' }}>{pending.length}</span>}</>}
               {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#e5e7eb', color: '#6b7280' }}>{paid.length}</span>}</>}
+              {t === 'reminders' && <>Reminders {activeReminders.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#fef3c7', color: '#b45309' }}>{activeReminders.length}</span>}</>}
               {t === 'senders' && 'Senders'}
             </button>
           ))}
@@ -367,10 +407,12 @@ export default function Home() {
               <BillCard
                 key={bill.id}
                 bill={bill}
+                senderLabel={senders.find(s => s.whatsapp_number === bill.sent_by)?.label ?? null}
                 onPaid={() => markPaid(bill.id)}
                 onDelete={() => deleteBill(bill.id)}
                 onPayStitch={() => payViaStitch(bill.id)}
                 onSaveBankDetails={details => saveBankDetails(bill.id, details)}
+                onConfirm={() => confirmBill(bill.id)}
               />
             ))}
           </div>
@@ -391,6 +433,30 @@ export default function Home() {
                 onDelete={() => deleteBill(bill.id)}
                 onRepeat={() => repeatBill(bill)}
                 onUnpaid={() => markUnpaid(bill.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Reminders */}
+        {tab === 'reminders' && (
+          <div className="space-y-3">
+            {reminders.length === 0 && (
+              <div className="text-center py-16 text-gray-400">
+                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fffbeb, #f0fdf4)' }}>
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+                <p className="text-sm font-semibold text-gray-500">No reminders yet</p>
+                <p className="text-xs mt-1">Trusted senders can text a nudge (no invoice needed) and it&apos;ll show up here</p>
+              </div>
+            )}
+            {reminders.map(reminder => (
+              <ReminderCard
+                key={reminder.id}
+                reminder={reminder}
+                senderLabel={senders.find(s => s.whatsapp_number === reminder.sent_by)?.label ?? reminder.sender_label}
+                onDismiss={() => dismissReminder(reminder.id, !reminder.dismissed)}
+                onDelete={() => deleteReminder(reminder.id)}
               />
             ))}
           </div>
@@ -463,21 +529,24 @@ export default function Home() {
 
 type BillCardProps = {
   bill: Bill
+  senderLabel?: string | null
   onPaid?: () => Promise<void> | void
   onUnpaid?: () => Promise<void> | void
   onPayStitch?: () => void
   onDelete?: () => void
   onRepeat?: () => void
   onSaveBankDetails?: (details: Partial<Bill>) => void
+  onConfirm?: () => Promise<void> | void
 }
 
-function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onSaveBankDetails }: BillCardProps) {
+function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onSaveBankDetails, onConfirm }: BillCardProps) {
   const [copied, setCopied] = useState<string | null>(null)
   const [showBankForm, setShowBankForm] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [repeating, setRepeating] = useState(false)
   const [markingPaid, setMarkingPaid] = useState(false)
   const [markingUnpaid, setMarkingUnpaid] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const [bankFields, setBankFields] = useState({
     bank_name: bill.bank_name ?? '',
     account_number: bill.account_number ?? '',
@@ -487,6 +556,7 @@ function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onS
 
   const isPaid = bill.status === 'paid'
   const isIncomplete = !bill.account_number && !isPaid
+  const isUnconfirmed = bill.unconfirmed && !isPaid
 
   function copy(val: string, label: string) {
     navigator.clipboard.writeText(val)
@@ -498,6 +568,13 @@ function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onS
     setRepeating(true)
     await onRepeat?.()
     setRepeating(false)
+  }
+
+  async function handleConfirm() {
+    if (confirming) return
+    setConfirming(true)
+    await onConfirm?.()
+    setConfirming(false)
   }
 
   async function handleMarkPaid() {
@@ -522,19 +599,21 @@ function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onS
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   })
 
-  const borderColor = isPaid ? '#d1fae5' : isIncomplete ? '#fcd34d' : '#a7f3d0'
-  const cardBg = isPaid ? 'rgba(240,253,244,0.6)' : isIncomplete ? 'rgba(255,251,235,0.8)' : '#ffffff'
+  const borderColor = isPaid ? '#d1fae5' : isUnconfirmed ? '#93c5fd' : isIncomplete ? '#fcd34d' : '#a7f3d0'
+  const cardBg = isPaid ? 'rgba(240,253,244,0.6)' : isUnconfirmed ? 'rgba(239,246,255,0.8)' : isIncomplete ? 'rgba(255,251,235,0.8)' : '#ffffff'
 
   return (
     <div className="rounded-2xl p-4 border-l-4 transition-all"
       style={{
         background: cardBg,
         borderLeft: `4px solid ${borderColor}`,
-        border: `1px solid ${isPaid ? '#d1fae5' : isIncomplete ? '#fde68a' : '#e5e7eb'}`,
+        border: `1px solid ${isPaid ? '#d1fae5' : isUnconfirmed ? '#bfdbfe' : isIncomplete ? '#fde68a' : '#e5e7eb'}`,
         borderLeftWidth: '4px',
         borderLeftColor: borderColor,
         boxShadow: isPaid
           ? '0 2px 12px rgba(16,185,129,0.06)'
+          : isUnconfirmed
+          ? '0 2px 12px rgba(59,130,246,0.1)'
           : isIncomplete
           ? '0 2px 12px rgba(245,158,11,0.1)'
           : '0 2px 16px rgba(34,197,94,0.07)',
@@ -544,6 +623,9 @@ function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onS
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-gray-900">{bill.payee}</p>
+            {isUnconfirmed && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#dbeafe', color: '#1d4ed8' }}>Unconfirmed</span>
+            )}
             {isIncomplete && (
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#fef3c7', color: '#b45309' }}>Needs details</span>
             )}
@@ -554,7 +636,9 @@ function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onS
           {isPaid && paidLabel ? (
             <p className="text-xs font-semibold mt-0.5" style={{ color: '#16a34a' }}>Paid {paidLabel}</p>
           ) : (
-            <p className="text-xs text-gray-500 mt-0.5">Received {receivedLabel}</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Received {receivedLabel}{senderLabel ? ` · via ${senderLabel}` : ''}
+            </p>
           )}
         </div>
         <div className="flex items-center gap-2 ml-3 flex-shrink-0">
@@ -589,6 +673,12 @@ function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onS
         </div>
       )}
 
+      {isUnconfirmed && (
+        <div className="rounded-xl p-3 mb-3 text-xs" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>
+          {senderLabel || 'This sender'} is trusted by more than one Sorted account, so we couldn&apos;t tell whose bill this is. Confirm it&apos;s yours before paying it.
+        </div>
+      )}
+
       {isIncomplete && showBankForm && (
         <div className="rounded-xl p-3 mb-3 space-y-2" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
           {(['bank_name', 'account_number', 'branch_code', 'reference'] as const).map(field => (
@@ -615,7 +705,25 @@ function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onS
 
       {!isPaid && (
         <div className="flex gap-2">
-          {isIncomplete ? (
+          {isUnconfirmed ? (
+            <>
+              <button
+                onClick={handleConfirm}
+                disabled={confirming}
+                className="flex-1 text-white text-xs font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #3b82f6, #06b6d4)', boxShadow: '0 2px 8px rgba(59,130,246,0.3)' }}
+              >
+                {confirming ? 'Confirming…' : '✓ This is mine'}
+              </button>
+              <button
+                onClick={onDelete}
+                className="text-xs font-medium py-2.5 px-4 rounded-xl transition-colors"
+                style={{ border: '1px solid #fecaca', color: '#dc2626', background: '#fef2f2' }}
+              >
+                Not mine
+              </button>
+            </>
+          ) : isIncomplete ? (
             <button
               onClick={() => setShowBankForm(v => !v)}
               className="flex-1 text-xs font-semibold py-2.5 rounded-xl transition-colors"
@@ -674,6 +782,57 @@ function BillCard({ bill, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onS
   )
 }
 
+
+function ReminderCard({ reminder, senderLabel, onDismiss, onDelete }: { reminder: Reminder; senderLabel: string | null; onDismiss: () => void; onDelete: () => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const receivedLabel = new Date(reminder.created_at).toLocaleString('en-ZA', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+  })
+
+  return (
+    <div className="rounded-2xl p-4 border-l-4 transition-all"
+      style={{
+        background: reminder.dismissed ? 'rgba(240,253,244,0.6)' : '#fffbeb',
+        borderLeftWidth: '4px',
+        borderLeftColor: reminder.dismissed ? '#d1fae5' : '#fcd34d',
+        border: `1px solid ${reminder.dismissed ? '#d1fae5' : '#fde68a'}`,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+      }}>
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-gray-900">{senderLabel || 'You'}</p>
+            {reminder.dismissed && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>Dismissed</span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">Received {receivedLabel}</p>
+        </div>
+        {confirmDelete ? (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button onClick={onDelete} className="text-xs text-red-500 font-semibold px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition-colors">Delete</button>
+            <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-400 px-1">✕</button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmDelete(true)} className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50 flex-shrink-0">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        )}
+      </div>
+      <p className="text-sm text-gray-700 mb-3">{reminder.message}</p>
+      <button
+        onClick={onDismiss}
+        className="text-xs font-semibold py-2 px-3 rounded-xl transition-colors"
+        style={reminder.dismissed
+          ? { border: '1px solid #fde68a', color: '#b45309', background: '#fffbeb' }
+          : { border: '1px solid #d1fae5', color: '#16a34a', background: '#f0fdf4' }}
+      >
+        {reminder.dismissed ? 'Mark active' : 'Dismiss'}
+      </button>
+    </div>
+  )
+}
 
 function DetailRow({ label, value, onCopy, copied }: { label: string; value: string; onCopy?: () => void; copied?: boolean }) {
   return (

@@ -12,12 +12,12 @@ function PaySuccessContent() {
   useEffect(() => {
     if (!billId) { setStatus('error'); return }
 
-    const phone = localStorage.getItem('sorted_phone')
-    if (!phone) { router.push('/'); return }
+    const token = localStorage.getItem('sorted_token')
+    if (!token) { router.push('/'); return }
 
     fetch('/api/bills', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ id: billId, status: 'paid' })
     })
       .then(r => r.ok ? setStatus('success') : setStatus('error'))

@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export type ExtractedBill = {
-  message_type: 'new_bill' | 'bank_update' | 'unknown'
+  message_type: 'new_bill' | 'bank_update' | 'reminder' | 'unknown'
   payee: string | null
   amount: number | null
   due_date: string | null
@@ -13,12 +13,12 @@ export type ExtractedBill = {
   reference: string | null
 }
 
-const EXTRACTION_PROMPT = `You are a payment assistant for South African parents. Parse WhatsApp messages about bills, invoices, and banking details.
+const EXTRACTION_PROMPT = `You are a payment assistant for South African parents. Parse WhatsApp messages about bills, invoices, banking details, and payment reminders.
 
 Return ONLY valid JSON:
 {
-  "message_type": "new_bill" | "bank_update" | "unknown",
-  "payee": "who to pay or which payee the bank details belong to",
+  "message_type": "new_bill" | "bank_update" | "reminder" | "unknown",
+  "payee": "who to pay, which payee the bank details belong to, or what the reminder is about",
   "amount": 0.00,
   "due_date": "YYYY-MM-DD or null",
   "bank_name": "FNB / Standard Bank / ABSA / Nedbank / Capitec / etc or null",
@@ -28,7 +28,8 @@ Return ONLY valid JSON:
 }
 
 message_type rules:
-- "new_bill": a payment request, invoice, or reminder with an amount (e.g. "pay ballet R850", "vet bill R2000 due Friday")
+- "new_bill": a payment request or invoice WITH a specific amount (e.g. "pay ballet R850", "vet bill R2000 due Friday")
+- "reminder": a nudge or note about a payment with NO specific amount attached (e.g. "don't forget to pay the vet", "remind dad the school fees are due Friday", "your account is overdue, please pay")
 - "bank_update": the user is providing/updating banking details for a known payee, with NO amount or a separate payee reference (e.g. "ballet banking details are FNB 98887765", "swimming coach account is 1234 Capitec")
 - "unknown": cannot determine intent
 

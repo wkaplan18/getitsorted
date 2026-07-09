@@ -79,6 +79,10 @@ export function formatIncompleteConfirmation(payee: string, amount: number, dueD
   return `Got it — R${amount.toFixed(2)} to *${payee}*.\n\nI don't have their banking details yet. Add them on the dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`
 }
 
+export function formatReminderConfirmation(payee: string): string {
+  return `Noted! ✓\n\nReminder about *${payee}* added to the dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`
+}
+
 export function formatReminder(payee: string, amount: number, dueDate: string, accountNumber: string | null, reference: string | null): string {
   const due = new Date(dueDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })
   let msg = `Reminder: R${amount.toFixed(2)} due to *${payee}* on ${due}`

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sessionPhone } from '@/lib/session'
 
 export async function GET(req: NextRequest) {
-  const phone = req.nextUrl.searchParams.get('phone')
-  if (!phone) return NextResponse.json({ error: 'phone required' }, { status: 400 })
+  const phone = sessionPhone(req)
+  if (!phone) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const { data: user } = await supabaseAdmin
     .from('users')

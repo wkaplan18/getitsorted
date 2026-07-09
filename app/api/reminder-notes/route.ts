@@ -1,0 +1,53 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase'
+import { sessionPhone } from '@/lib/session'
+
+async function sessionUserId(req: NextRequest): Promise<string | null> {
+  const phone = sessionPhone(req)
+  if (!phone) return null
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('whatsapp_number', phone)
+    .single()
+  return user?.id ?? null
+}
+
+// GET /api/reminder-notes — fetch all reminders for the logged-in user
+export async function GET(req: NextRequest) {
+  const userId = await sessionUserId(req)
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const { data: reminders } = await supabaseAdmin
+    .from('reminders')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  return NextResponse.json({ reminders: reminders || [] })
+}
+
+// DELETE /api/reminder-notes?id=xxx — delete one of the logged-in user's reminders
+export async function DELETE(req: NextRequest) {
+  const userId = await sessionUserId(req)
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const id = req.nextUrl.searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  const { error } = await supabaseAdmin.from('reminders').delete().eq('id', id).eq('user_id', userId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
+// PATCH /api/reminder-notes — mark one of the logged-in user's reminders dismissed/undismissed
+export async function PATCH(req: NextRequest) {
+  const userId = await sessionUserId(req)
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const { id, dismissed } = await req.json()
+  if (!id || typeof dismissed !== 'boolean') return NextResponse.json({ error: 'id and dismissed required' }, { status: 400 })
+
+  const { error } = await supabaseAdmin.from('reminders').update({ dismissed }).eq('id', id).eq('user_id', userId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { makeSessionToken } from '@/lib/session'
 
 // The OTP itself is generated and sent by the webhook when the user messages
 // "LOGIN" to the Sorted WhatsApp number — see app/api/webhook/route.ts.
@@ -26,5 +27,5 @@ export async function PUT(req: NextRequest) {
     .update({ otp: null, otp_expires_at: null })
     .eq('id', user.id)
 
-  return NextResponse.json({ ok: true, phone })
+  return NextResponse.json({ ok: true, phone, token: makeSessionToken(phone) })
 }

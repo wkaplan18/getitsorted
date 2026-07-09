@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { createPaymentInitiation, toBankId } from '@/lib/stitch'
+import { sessionPhone } from '@/lib/session'
 
-// POST /api/pay { billId, phone }
+// POST /api/pay { billId }
 // Creates a Stitch payment initiation and returns the redirect URL
 export async function POST(req: NextRequest) {
-  const { billId, phone } = await req.json()
-  if (!billId || !phone) return NextResponse.json({ error: 'billId and phone required' }, { status: 400 })
+  const phone = sessionPhone(req)
+  if (!phone) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const { billId } = await req.json()
+  if (!billId) return NextResponse.json({ error: 'billId required' }, { status: 400 })
 
   // Verify bill belongs to this user
   const { data: user } = await supabaseAdmin

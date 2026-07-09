@@ -39,6 +39,7 @@ create table if not exists bills (
   stitch_payment_id text,       -- set when Stitch payment is initiated
   raw_message text,
   reminder_sent boolean default false,
+  unconfirmed boolean default false,  -- true when a shared trusted sender (e.g. a vet used by 2 families) fanned this bill out to more than one account — hides payment actions until the owner confirms it's actually theirs
   created_at timestamptz default now(),
   paid_at timestamptz
 );
@@ -47,6 +48,23 @@ create index if not exists bills_user_status on bills(user_id, status);
 create index if not exists bills_due_date on bills(due_date) where status = 'pending';
 create index if not exists payees_user on payees(user_id);
 
+-- Reminders: freeform nudges with no payment amount attached — e.g. a trusted
+-- sender (vet, school) or a spouse added as a trusted sender texting
+-- "don't forget to pay the vet" rather than forwarding an invoice.
+create table if not exists reminders (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references users(id) on delete cascade not null,
+  sent_by text,                 -- whatsapp number of the trusted sender who sent it, null if the account owner sent it to themselves
+  sender_label text,            -- trusted_senders.label at the time it was sent, for display
+  message text not null,
+  whatsapp_message_id text,
+  dismissed boolean default false,
+  created_at timestamptz default now()
+);
+
+create index if not exists reminders_user on reminders(user_id, dismissed);
+
 alter table bills enable row level security;
 alter table users enable row level security;
 alter table payees enable row level security;
+alter table reminders enable row level security;
