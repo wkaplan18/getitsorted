@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sessionPhone } from '@/lib/session'
+import { sendWhatsAppTemplate, sanitizeTemplateParam } from '@/lib/whatsapp'
 
 async function sessionUserId(req: NextRequest): Promise<string | null> {
   const phone = sessionPhone(req)
@@ -54,7 +55,31 @@ export async function PATCH(req: NextRequest) {
   const { id, dismissed } = await req.json()
   if (!id || typeof dismissed !== 'boolean') return NextResponse.json({ error: 'id and dismissed required' }, { status: 400 })
 
+  const { data: current } = await supabaseAdmin
+    .from('reminders')
+    .select('sent_by, message, dismissed')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single()
+
   const { error } = await supabaseAdmin.from('reminders').update({ dismissed }).eq('id', id).eq('user_id', userId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Tell the original sender their reminder was completed — only on the false->true
+  // transition (so re-ticking after an accidental untick doesn't spam them), and only
+  // when it came from a trusted sender (self-reminders have no one else to notify).
+  // Business-initiated, so it needs an approved template, not a free-form message.
+  if (dismissed && current && !current.dismissed && current.sent_by) {
+    try {
+      await sendWhatsAppTemplate(
+        current.sent_by,
+        'reminder_done_notification',
+        [sanitizeTemplateParam(current.message)]
+      )
+    } catch (err) {
+      console.error('Failed to notify sender of completed reminder:', err)
+    }
+  }
+
   return NextResponse.json({ ok: true })
 }

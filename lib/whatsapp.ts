@@ -50,6 +50,13 @@ export async function sendWhatsAppTemplate(to: string, name: string, params: str
   return sendTemplate(to, name, params)
 }
 
+// Meta template variables can't contain newlines/tabs or run past ~60 chars cleanly —
+// collapse whitespace and truncate so arbitrary reminder text is safe to send.
+export function sanitizeTemplateParam(text: string, maxLength = 60): string {
+  const collapsed = text.replace(/\s+/g, ' ').trim()
+  return collapsed.length > maxLength ? collapsed.slice(0, maxLength - 1) + '…' : collapsed
+}
+
 export async function sendWhatsApp(to: string, message: string) {
   // to: SA number without + e.g. 27821234567
   return sendMessage(to, message)
