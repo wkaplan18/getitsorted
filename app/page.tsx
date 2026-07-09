@@ -283,6 +283,17 @@ export default function Home() {
                 <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, margin: 0, maxWidth: 640 }}>Your wife spots a school trip invoice. Your teenager needs to pay a club fee. They simply forward it to your Sorted number on WhatsApp — it lands straight in your dashboard with the amount, due date, and banking details already read and ready. No chasing, no group chats, no forgotten payments.</p>
               </div>
             </div>
+
+            {/* Reminders feature — full width */}
+            <div className="feature-card" style={{ gridColumn: '1 / -1', background: '#fffbeb', borderRadius: 20, padding: 24, border: '1px solid #fde68a', display: 'flex', alignItems: 'flex-start', gap: 20 }}>
+              <div style={{ width: 48, height: 48, background: '#f59e0b', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <div>
+                <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: '#0f172a', marginBottom: 8, fontSize: 16 }}>Send a reminder. They tick it off. You know it&apos;s done.</h3>
+                <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, margin: 0, maxWidth: 640 }}>Not every reminder is a bill. &quot;Book the dentist&quot;, &quot;pay the vet&quot;, &quot;sign the permission slip&quot; — send it to Sorted like any other message and it lands in their dashboard as a reminder. The moment they mark it done, Sorted WhatsApps you automatically. No more &quot;did you do that yet?&quot;</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
