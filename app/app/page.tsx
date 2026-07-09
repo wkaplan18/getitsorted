@@ -63,6 +63,7 @@ export default function Home() {
   const [addingsender, setAddingSender] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [keepLoggedIn, setKeepLoggedIn] = useState(true)
+  const [confirmClearDone, setConfirmClearDone] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('sorted_phone')
@@ -147,6 +148,12 @@ export default function Home() {
   async function deleteReminder(id: string) {
     await fetch(`/api/reminder-notes?id=${id}`, { method: 'DELETE', headers: authHeaders() })
     setReminders(prev => prev.filter(r => r.id !== id))
+  }
+
+  async function clearDoneReminders() {
+    setConfirmClearDone(false)
+    await fetch('/api/reminder-notes?dismissed=true', { method: 'DELETE', headers: authHeaders() })
+    setReminders(prev => prev.filter(r => !r.dismissed))
   }
 
   async function addSender() {
@@ -253,6 +260,7 @@ export default function Home() {
   const incomplete = pending.filter(b => !b.account_number)
   const totalDue = pending.reduce((s, b) => s + b.amount, 0)
   const activeReminders = reminders.filter(r => !r.dismissed)
+  const doneReminders = reminders.filter(r => r.dismissed)
 
   if (view === 'login') return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)' }}>
@@ -399,7 +407,7 @@ export default function Home() {
           {(['pending', 'paid', 'reminders', 'senders'] as Tab[]).map(t => (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => { setTab(t); setConfirmClearDone(false) }}
               className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 capitalize"
               style={tab === t
                 ? { background: '#fff', color: '#16a34a', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderBottom: '2px solid #22c55e' }
@@ -463,6 +471,30 @@ export default function Home() {
         {/* Reminders */}
         {tab === 'reminders' && (
           <div className="space-y-3">
+            {doneReminders.length > 0 && (
+              <div className="flex items-center justify-between px-1">
+                <p className="text-xs text-gray-400">{doneReminders.length} done</p>
+                {confirmClearDone ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={clearDoneReminders}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                    >
+                      Clear {doneReminders.length} done?
+                    </button>
+                    <button onClick={() => setConfirmClearDone(false)} className="text-xs text-gray-400 px-1.5 py-1">✕</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmClearDone(true)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                    style={{ border: '1px solid #d1fae5', color: '#16a34a', background: '#f0fdf4' }}
+                  >
+                    Clear done
+                  </button>
+                )}
+              </div>
+            )}
             {reminders.length === 0 && (
               <div className="text-center py-16 text-gray-400">
                 <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fffbeb, #f0fdf4)' }}>
@@ -820,38 +852,48 @@ function ReminderCard({ reminder, senderLabel, onDismiss, onDelete }: { reminder
         borderLeftColor: reminder.dismissed ? '#d1fae5' : '#fcd34d',
         border: `1px solid ${reminder.dismissed ? '#d1fae5' : '#fde68a'}`,
         boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+        opacity: reminder.dismissed ? 0.75 : 1,
       }}>
-      <div className="flex items-start justify-between mb-2">
+      <div className="flex items-start gap-3">
+        <button
+          onClick={onDismiss}
+          aria-label={reminder.dismissed ? 'Mark as not done' : 'Mark as done'}
+          className="flex-shrink-0 rounded-full flex items-center justify-center transition-colors mt-0.5"
+          style={{
+            width: '32px', height: '32px',
+            border: reminder.dismissed ? '2px solid #22c55e' : '2px solid #d1d5db',
+            background: reminder.dismissed ? '#22c55e' : '#ffffff',
+          }}
+        >
+          {reminder.dismissed && (
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          )}
+        </button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-gray-900">{senderLabel || 'You'}</p>
-            {reminder.dismissed && (
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>Dismissed</span>
+          <div className="flex items-start justify-between mb-1">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-gray-900">{senderLabel || 'You'}</p>
+                {reminder.dismissed && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>Done</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">Received {receivedLabel}</p>
+            </div>
+            {confirmDelete ? (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={onDelete} className="text-xs text-red-500 font-semibold px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition-colors">Delete</button>
+                <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-400 px-1">✕</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50 flex-shrink-0">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">Received {receivedLabel}</p>
+          <p className={`text-sm ${reminder.dismissed ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{reminder.message}</p>
         </div>
-        {confirmDelete ? (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={onDelete} className="text-xs text-red-500 font-semibold px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition-colors">Delete</button>
-            <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-400 px-1">✕</button>
-          </div>
-        ) : (
-          <button onClick={() => setConfirmDelete(true)} className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50 flex-shrink-0">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-        )}
       </div>
-      <p className="text-sm text-gray-700 mb-3">{reminder.message}</p>
-      <button
-        onClick={onDismiss}
-        className="text-xs font-semibold py-2 px-3 rounded-xl transition-colors"
-        style={reminder.dismissed
-          ? { border: '1px solid #fde68a', color: '#b45309', background: '#fffbeb' }
-          : { border: '1px solid #d1fae5', color: '#16a34a', background: '#f0fdf4' }}
-      >
-        {reminder.dismissed ? 'Mark active' : 'Dismiss'}
-      </button>
     </div>
   )
 }

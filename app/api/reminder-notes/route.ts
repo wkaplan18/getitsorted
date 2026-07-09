@@ -28,9 +28,16 @@ export async function GET(req: NextRequest) {
 }
 
 // DELETE /api/reminder-notes?id=xxx — delete one of the logged-in user's reminders
+// DELETE /api/reminder-notes?dismissed=true — delete all of their dismissed (done) reminders
 export async function DELETE(req: NextRequest) {
   const userId = await sessionUserId(req)
   if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  if (req.nextUrl.searchParams.get('dismissed') === 'true') {
+    const { error } = await supabaseAdmin.from('reminders').delete().eq('user_id', userId).eq('dismissed', true)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
 
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
