@@ -225,7 +225,7 @@ async function processMessage(message: { id: string; from: string; type: string;
         }
       }
 
-      await sendWhatsApp(from, formatReminderConfirmation(extracted.payee))
+      await sendWhatsApp(from, formatReminderConfirmation(extracted.payee, !!targets[0].sentBy))
       return
     }
 
@@ -300,8 +300,8 @@ async function processMessage(message: { id: string; from: string; type: string;
       // when the same sender fans out to multiple accounts, reply using the first.
       if (target === targets[0]) {
         const reply = accountNumber
-          ? formatBillConfirmation(extracted.payee, extracted.amount, extracted.due_date)
-          : formatIncompleteConfirmation(extracted.payee, extracted.amount, extracted.due_date)
+          ? formatBillConfirmation(extracted.payee, extracted.amount, extracted.due_date, !!target.sentBy)
+          : formatIncompleteConfirmation(extracted.payee, extracted.amount, extracted.due_date, !!target.sentBy)
         await sendWhatsApp(from, reply)
       }
     }

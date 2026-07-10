@@ -78,15 +78,22 @@ export async function downloadMedia(mediaId: string): Promise<{ base64: string; 
   return { base64: Buffer.from(buffer).toString('base64'), mimeType: mime_type }
 }
 
-export function formatBillConfirmation(payee: string, amount: number, dueDate: string | null): string {
+// viaSender: true when this is replying to a trusted sender forwarding something on
+// someone else's behalf, rather than the account owner messaging themselves. That
+// person has no dashboard of their own, so the reply thanks them instead of pointing
+// them at a link that isn't theirs.
+export function formatBillConfirmation(payee: string, amount: number, dueDate: string | null, viaSender = false): string {
+  if (viaSender) return `Nice one! 🙌 R${amount.toFixed(2)} to *${payee}* is sorted — thanks for the heads up, it's landed safely.`
   return `Got it! ✓\n\nR${amount.toFixed(2)} to *${payee}*\n\nView your dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`
 }
 
-export function formatIncompleteConfirmation(payee: string, amount: number, dueDate: string | null): string {
+export function formatIncompleteConfirmation(payee: string, amount: number, dueDate: string | null, viaSender = false): string {
+  if (viaSender) return `Got it, thank you! 🙏 R${amount.toFixed(2)} to *${payee}* is logged — just need their banking details before it can be paid.`
   return `Got it — R${amount.toFixed(2)} to *${payee}*.\n\nI don't have their banking details yet. Add them on the dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`
 }
 
-export function formatReminderConfirmation(payee: string): string {
+export function formatReminderConfirmation(payee: string, viaSender = false): string {
+  if (viaSender) return `Noted, thank you! 📌 I've passed along the reminder about *${payee}*.`
   return `Noted! ✓\n\nReminder about *${payee}* added to the dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`
 }
 
