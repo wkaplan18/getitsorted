@@ -58,6 +58,8 @@ export default function Home() {
   const [error, setError] = useState('')
   const [tab, setTab] = useState<Tab>('pending')
   const [senders, setSenders] = useState<TrustedSender[]>([])
+  const [myName, setMyName] = useState('')
+  const [savingName, setSavingName] = useState(false)
   const [newNumber, setNewNumber] = useState('')
   const [newLabel, setNewLabel] = useState('')
   const [addingsender, setAddingSender] = useState(false)
@@ -121,19 +123,32 @@ export default function Home() {
 
   async function fetchAll(p: string) {
     setView('dashboard')
-    const [billsRes, sendersRes, remindersRes] = await Promise.all([
+    const [billsRes, sendersRes, remindersRes, authRes] = await Promise.all([
       fetch(`/api/bills?phone=${p}`, { headers: authHeaders() }),
       fetch(`/api/trusted-senders?phone=${p}`, { headers: authHeaders() }),
       fetch(`/api/reminder-notes?phone=${p}`, { headers: authHeaders() }),
+      fetch('/api/auth', { headers: authHeaders() }),
     ])
     // Expired or missing session — back to login
     if (billsRes.status === 401) { logout(); return }
     const billsData = await billsRes.json()
     const sendersData = await sendersRes.json()
     const remindersData = await remindersRes.json()
+    const authData = await authRes.json()
     setBills(billsData.bills || [])
     setSenders(sendersData.senders || [])
     setReminders(remindersData.reminders || [])
+    setMyName(authData.name || '')
+  }
+
+  async function saveName() {
+    setSavingName(true)
+    await fetch('/api/auth', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: myName })
+    })
+    setSavingName(false)
   }
 
   async function dismissReminder(id: string, dismissed: boolean) {
@@ -520,6 +535,27 @@ export default function Home() {
         {tab === 'senders' && (
           <div>
             <p className="text-xs text-gray-400 mb-4">Add a WhatsApp number (e.g. your partner&apos;s) and their forwarded invoices will appear in your dashboard automatically.</p>
+            <div className="bg-white rounded-2xl p-4 border border-gray-100 mb-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+              <p className="text-sm font-semibold text-gray-900 mb-1">Your name</p>
+              <p className="text-xs text-gray-400 mb-3">Shown to trusted senders in the WhatsApp message they get when you add them.</p>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-400 transition-colors"
+                  placeholder="e.g. Warren"
+                  value={myName}
+                  onChange={e => setMyName(e.target.value)}
+                  onBlur={saveName}
+                />
+                <button
+                  onClick={saveName}
+                  disabled={savingName}
+                  className="text-white rounded-xl px-4 text-sm font-semibold disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #22c55e 0%, #10b981 50%, #06b6d4 100%)' }}
+                >
+                  {savingName ? '...' : 'Save'}
+                </button>
+              </div>
+            </div>
             <div className="bg-white rounded-2xl p-4 border border-gray-100 mb-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
               <p className="text-sm font-semibold text-gray-900 mb-3">Add trusted sender</p>
               <input

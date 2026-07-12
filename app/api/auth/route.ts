@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { makeSessionToken } from '@/lib/session'
+import { makeSessionToken, sessionPhone } from '@/lib/session'
 
 // The OTP itself is generated and sent by the webhook when the user messages
 // "LOGIN" to the Sorted WhatsApp number — see app/api/webhook/route.ts.
@@ -28,4 +28,22 @@ export async function PUT(req: NextRequest) {
     .eq('id', user.id)
 
   return NextResponse.json({ ok: true, phone, token: makeSessionToken(phone, remember !== false) })
+}
+
+// GET /api/auth — the logged-in user's display name (used to populate the "Your name" field)
+export async function GET(req: NextRequest) {
+  const phone = sessionPhone(req)
+  if (!phone) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const { data: user } = await supabaseAdmin.from('users').select('name').eq('whatsapp_number', phone).single()
+  return NextResponse.json({ name: user?.name ?? null })
+}
+
+// PATCH /api/auth { name } — set the logged-in user's display name. Shown to trusted
+// senders in the WhatsApp message they get when added ("X has allowed you to...").
+export async function PATCH(req: NextRequest) {
+  const phone = sessionPhone(req)
+  if (!phone) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const { name } = await req.json()
+  await supabaseAdmin.from('users').update({ name: (name || '').trim() || null }).eq('whatsapp_number', phone)
+  return NextResponse.json({ ok: true })
 }
