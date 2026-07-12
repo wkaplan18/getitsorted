@@ -263,6 +263,17 @@ export default function Home() {
     setBills(prev => prev.map(b => b.id === billId ? { ...b, ...details } : b))
   }
 
+  // Corrections to what the AI extracted — payee, amount, due date
+  async function saveBillEdits(billId: string, edits: { payee: string; amount: number; due_date: string | null }) {
+    const res = await fetch('/api/bills', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ id: billId, ...edits })
+    })
+    if (res.ok) setBills(prev => prev.map(b => b.id === billId ? { ...b, ...edits } : b))
+    return res.ok
+  }
+
   function logout() {
     localStorage.removeItem('sorted_phone')
     localStorage.removeItem('sorted_token')
@@ -270,7 +281,8 @@ export default function Home() {
     setPhone(''); setBills([]); setReminders([]); setView('login')
   }
 
-  const pending = bills.filter(b => b.status === 'pending')
+  // Overdue bills are still unpaid — they live in the pending tab with a red badge
+  const pending = bills.filter(b => b.status === 'pending' || b.status === 'overdue')
   const paid = bills.filter(b => b.status === 'paid')
   const incomplete = pending.filter(b => !b.account_number)
   const totalDue = pending.reduce((s, b) => s + b.amount, 0)
@@ -458,6 +470,7 @@ export default function Home() {
                 onPayStitch={() => payViaStitch(bill.id)}
                 onSaveBankDetails={details => saveBankDetails(bill.id, details)}
                 onConfirm={() => confirmBill(bill.id)}
+                onEdit={edits => saveBillEdits(bill.id, edits)}
               />
             ))}
           </div>
@@ -627,11 +640,19 @@ type BillCardProps = {
   onRepeat?: () => void
   onSaveBankDetails?: (details: Partial<Bill>) => void
   onConfirm?: () => Promise<void> | void
+  onEdit?: (edits: { payee: string; amount: number; due_date: string | null }) => Promise<boolean>
 }
 
-function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onSaveBankDetails, onConfirm }: BillCardProps) {
+function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, onRepeat, onSaveBankDetails, onConfirm, onEdit }: BillCardProps) {
   const [copied, setCopied] = useState<string | null>(null)
   const [showBankForm, setShowBankForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editFields, setEditFields] = useState({
+    payee: bill.payee,
+    amount: String(bill.amount),
+    due_date: bill.due_date ?? '',
+  })
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [repeating, setRepeating] = useState(false)
   const [markingPaid, setMarkingPaid] = useState(false)
@@ -647,6 +668,20 @@ function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, 
   const isPaid = bill.status === 'paid'
   const isIncomplete = !bill.account_number && !isPaid
   const isUnconfirmed = bill.unconfirmed && !isPaid
+  // The cron flips status to 'overdue' daily, but check the date too so a bill
+  // that went past due since the last cron run still shows the badge immediately.
+  const isOverdue = !isPaid && (bill.status === 'overdue' ||
+    (!!bill.due_date && bill.due_date < new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(new Date())))
+
+  async function saveEdit() {
+    if (!onEdit || savingEdit) return
+    const amount = Number(editFields.amount)
+    if (!editFields.payee.trim() || !Number.isFinite(amount) || amount <= 0) return
+    setSavingEdit(true)
+    const ok = await onEdit({ payee: editFields.payee.trim(), amount, due_date: editFields.due_date || null })
+    setSavingEdit(false)
+    if (ok) setShowEditForm(false)
+  }
 
   function copy(val: string, label: string) {
     navigator.clipboard.writeText(val)
@@ -689,8 +724,8 @@ function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, 
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   })
 
-  const borderColor = isPaid ? '#d1fae5' : isUnconfirmed ? '#93c5fd' : isIncomplete ? '#fcd34d' : '#a7f3d0'
-  const cardBg = isPaid ? 'rgba(240,253,244,0.6)' : isUnconfirmed ? 'rgba(239,246,255,0.8)' : isIncomplete ? 'rgba(255,251,235,0.8)' : '#ffffff'
+  const borderColor = isPaid ? '#d1fae5' : isOverdue ? '#fca5a5' : isUnconfirmed ? '#93c5fd' : isIncomplete ? '#fcd34d' : '#a7f3d0'
+  const cardBg = isPaid ? 'rgba(240,253,244,0.6)' : isOverdue ? 'rgba(254,242,242,0.8)' : isUnconfirmed ? 'rgba(239,246,255,0.8)' : isIncomplete ? 'rgba(255,251,235,0.8)' : '#ffffff'
 
   return (
     <div className="rounded-2xl p-4 border-l-4 transition-all"
@@ -713,6 +748,11 @@ function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-gray-900">{bill.payee}</p>
+            {isOverdue && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#fee2e2', color: '#b91c1c' }}>
+                Overdue{bill.due_date ? ` · was due ${new Date(bill.due_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}` : ''}
+              </span>
+            )}
             {isUnconfirmed && (
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#dbeafe', color: '#1d4ed8' }}>Unconfirmed</span>
             )}
@@ -728,6 +768,7 @@ function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, 
           ) : (
             <p className="text-xs text-gray-500 mt-0.5">
               Received {receivedLabel}{senderLabel ? ` · via ${senderLabel}` : ''}
+              {!isOverdue && bill.due_date ? ` · due ${new Date(bill.due_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}` : ''}
             </p>
           )}
         </div>
@@ -744,12 +785,23 @@ function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, 
               <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-400 px-1">✕</button>
             </div>
           ) : (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50"
-            >
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
+            <>
+              {!isPaid && onEdit && (
+                <button
+                  onClick={() => setShowEditForm(v => !v)}
+                  aria-label="Edit bill"
+                  className="text-gray-300 hover:text-cyan-600 transition-colors p-1 rounded-lg hover:bg-cyan-50"
+                >
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+              )}
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50"
+              >
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -766,6 +818,41 @@ function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, 
       {isUnconfirmed && (
         <div className="rounded-xl p-3 mb-3 text-xs" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>
           {senderLabel || 'This sender'} is trusted by more than one Sorted account, so we couldn&apos;t tell whose bill this is. Confirm it&apos;s yours before paying it.
+        </div>
+      )}
+
+      {showEditForm && !isPaid && (
+        <div className="rounded-xl p-3 mb-3 space-y-2" style={{ background: '#ecfeff', border: '1px solid #a5f3fc' }}>
+          <input
+            className="w-full border border-cyan-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-cyan-400 bg-white"
+            placeholder="Payee"
+            value={editFields.payee}
+            onChange={e => setEditFields(prev => ({ ...prev, payee: e.target.value }))}
+          />
+          <input
+            className="w-full border border-cyan-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-cyan-400 bg-white"
+            placeholder="Amount (e.g. 850)"
+            inputMode="decimal"
+            value={editFields.amount}
+            onChange={e => setEditFields(prev => ({ ...prev, amount: e.target.value }))}
+          />
+          <input
+            type="date"
+            className="w-full border border-cyan-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-cyan-400 bg-white text-gray-700"
+            value={editFields.due_date}
+            onChange={e => setEditFields(prev => ({ ...prev, due_date: e.target.value }))}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={saveEdit}
+              disabled={savingEdit || !editFields.payee.trim() || !(Number(editFields.amount) > 0)}
+              className="flex-1 text-white text-xs py-2 rounded-lg font-semibold disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)' }}
+            >
+              {savingEdit ? 'Saving…' : 'Save changes'}
+            </button>
+            <button onClick={() => setShowEditForm(false)} className="text-gray-400 text-xs px-3">Cancel</button>
+          </div>
         </div>
       )}
 
@@ -914,7 +1001,10 @@ function ReminderCard({ reminder, senderLabel, onDismiss, onDelete }: { reminder
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>Done</span>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">Received {receivedLabel}</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Received {receivedLabel}
+                {reminder.remind_at && !reminder.dismissed ? ` · ⏰ nudge ${new Date(reminder.remind_at).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}
+              </p>
             </div>
             {confirmDelete ? (
               <div className="flex items-center gap-1 flex-shrink-0">

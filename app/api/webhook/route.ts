@@ -10,6 +10,44 @@ import { sendWhatsApp, sendWhatsAppTemplate, downloadMedia, formatBillConfirmati
 // account, so a single inbound message can fan out to several targets.
 type Target = { userId: string; sentBy: string | null; label: string | null }
 
+type InboundMessage = {
+  id: string
+  from: string
+  type: string
+  text?: { body: string }
+  document?: { id: string; mime_type: string; filename?: string; caption?: string }
+  image?: { id: string; caption?: string }
+}
+
+const READ_FAIL_REPLY = "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date."
+const SAVE_FAIL_REPLY = "Something went wrong saving that on my side — it has NOT been added. Please try sending it again in a minute."
+
+const WELCOME_MESSAGE = `👋 Welcome to *Sorted* — I keep track of the bills and reminders you'd otherwise juggle in your head.
+
+Just message me naturally:
+📄 Forward an invoice (PDF or photo)
+💬 Type a bill: "pay ballet R850 by Friday"
+📌 Or a nudge: "remind me to pay the vet on Monday"
+
+Everything lands on your dashboard with the banking details ready to copy:
+${process.env.NEXT_PUBLIC_APP_URL}
+
+Text *LOGIN* any time to get a dashboard code, or *HELP* to see this again.`
+
+const HELP_MESSAGE = `Here's what I can do:
+
+📄 Forward an invoice (PDF or photo) — I'll pull out the amount, payee and banking details
+💬 Type a bill: "pay ballet R850 by Friday"
+📌 Set a reminder: "remind me to pay the vet Monday 2pm"
+🏦 Save bank details: "ballet banking details are FNB 98887765"
+
+Commands:
+*LOGIN* — get a dashboard login code
+*BILLS* — see what's still pending
+*STOP* — stop sending to someone's dashboard (trusted senders)
+
+Dashboard: ${process.env.NEXT_PUBLIC_APP_URL}`
+
 // Meta sends a GET to verify the webhook endpoint on setup
 export async function GET(req: NextRequest) {
   const mode      = req.nextUrl.searchParams.get('hub.mode')
@@ -65,7 +103,88 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function processMessage(message: { id: string; from: string; type: string; text?: { body: string }; document?: { id: string; mime_type: string; filename?: string }; image?: { id: string } }) {
+// Handles LOGIN / HELP / BILLS / STOP keywords. Returns true if the message was a
+// command and has been fully dealt with.
+async function handleCommand(from: string, text: string): Promise<boolean> {
+  const cmd = text.trim().toLowerCase()
+
+  // "LOGIN" — generates and sends a dashboard OTP. WhatsApp only allows free-form
+  // text replies to numbers that messaged us first, so the OTP has to be requested
+  // this way rather than pushed out when someone visits the website.
+  if (cmd === 'login') {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    const expires = new Date(Date.now() + 5 * 60 * 1000).toISOString()
+
+    let { error } = await supabaseAdmin
+      .from('users')
+      .upsert({ whatsapp_number: from, otp, otp_expires_at: expires, otp_attempts: 0 }, { onConflict: 'whatsapp_number' })
+
+    // Retry without otp_attempts in case the column migration hasn't run yet —
+    // a schema lag must never break login (see the bills.unconfirmed incident).
+    if (error) {
+      ({ error } = await supabaseAdmin
+        .from('users')
+        .upsert({ whatsapp_number: from, otp, otp_expires_at: expires }, { onConflict: 'whatsapp_number' }))
+    }
+    if (error) {
+      console.error('OTP save failed', error)
+      await sendWhatsApp(from, `Something went wrong generating your code — please try again in a minute.`)
+      return true
+    }
+
+    await sendWhatsApp(from, `Your Sorted login code is *${otp}*\n\nExpires in 5 minutes.`)
+    return true
+  }
+
+  if (cmd === 'help') {
+    await sendWhatsApp(from, HELP_MESSAGE)
+    return true
+  }
+
+  // "BILLS" — list the sender's own pending bills without needing the dashboard
+  if (cmd === 'bills') {
+    const { data: user } = await supabaseAdmin.from('users').select('id').eq('whatsapp_number', from).single()
+    if (!user) {
+      await sendWhatsApp(from, `You don't have any bills with me yet. Forward an invoice or type one (e.g. "pay ballet R850 by Friday") to get started.`)
+      return true
+    }
+    const { data: bills } = await supabaseAdmin
+      .from('bills')
+      .select('payee, amount, due_date')
+      .eq('user_id', user.id)
+      .in('status', ['pending', 'overdue'])
+      .order('due_date', { ascending: true, nullsFirst: false })
+
+    if (!bills || bills.length === 0) {
+      await sendWhatsApp(from, `Nothing pending — you're all sorted! ✅`)
+      return true
+    }
+    const total = bills.reduce((s, b) => s + Number(b.amount), 0)
+    const lines = bills.map(b => {
+      const due = b.due_date ? ` (due ${new Date(b.due_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })})` : ''
+      return `• R${Number(b.amount).toFixed(2)} — ${b.payee}${due}`
+    })
+    await sendWhatsApp(from, `You have ${bills.length} pending bill${bills.length > 1 ? 's' : ''} totalling *R${total.toFixed(2)}*:\n\n${lines.join('\n')}\n\nPay them from your dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`)
+    return true
+  }
+
+  // "STOP" — a trusted sender opting out of sending to someone's dashboard.
+  // POPIA-relevant: they never signed up themselves, so they need a way out.
+  if (cmd === 'stop') {
+    const { data: trustedRows } = await supabaseAdmin.from('trusted_senders').select('id').eq('whatsapp_number', from)
+    if (trustedRows && trustedRows.length > 0) {
+      await supabaseAdmin.from('trusted_senders').delete().eq('whatsapp_number', from)
+      await sendWhatsApp(from, `Done — you've been removed as a trusted sender. Messages you send here will no longer appear on anyone else's dashboard.`)
+    } else {
+      await sendWhatsApp(from, `You're not sending to anyone else's dashboard. If you want to stop using Sorted, simply stop messaging — or text HELP to see what I can do.`)
+    }
+    return true
+  }
+
+  return false
+}
+
+async function processMessage(message: InboundMessage) {
   try {
     // Deduplicate: ignore if we've already processed this message ID (Meta retries
     // webhooks that don't get a fast 200). A message can produce rows in either
@@ -78,18 +197,18 @@ async function processMessage(message: { id: string; from: string; type: string;
 
     const from: string = message.from  // e.g. "27821234567"
 
-    // "LOGIN" command — generates and sends a dashboard OTP. WhatsApp only allows
-    // free-form text replies to numbers that messaged us first, so the OTP has to be
-    // requested this way rather than pushed out when someone visits the website.
-    if (message.type === 'text' && message.text?.body.trim().toLowerCase() === 'login') {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString()
-      const expires = new Date(Date.now() + 5 * 60 * 1000).toISOString()
+    if (message.type === 'text' && message.text?.body) {
+      if (await handleCommand(from, message.text.body)) return
+    }
 
-      await supabaseAdmin
-        .from('users')
-        .upsert({ whatsapp_number: from, otp, otp_expires_at: expires }, { onConflict: 'whatsapp_number' })
-
-      await sendWhatsApp(from, `Your Sorted login code is *${otp}*\n\nExpires in 5 minutes.`)
+    // Voice notes / video / stickers etc. — be upfront about what we can't read
+    // instead of letting them fall through to a generic parse failure.
+    if (message.type === 'audio' || message.type === 'voice') {
+      await sendWhatsApp(from, `I can't listen to voice notes yet 🙈 — please type it out (e.g. "pay ballet R850 by Friday") or forward the invoice as a PDF or photo.`)
+      return
+    }
+    if (message.type !== 'text' && message.type !== 'document' && message.type !== 'image') {
+      await sendWhatsApp(from, `I can only read text messages, photos and PDFs for now. Try one of those!`)
       return
     }
 
@@ -102,22 +221,32 @@ async function processMessage(message: { id: string; from: string; type: string;
       .eq('whatsapp_number', from)
 
     let targets: Target[]
+    let isNewUser = false
 
     if (trustedSenderRows && trustedSenderRows.length > 0) {
       targets = trustedSenderRows.map(row => ({ userId: row.user_id, sentBy: from, label: row.label }))
     } else {
-      // Upsert as own user
-      const { data: user, error: userError } = await supabaseAdmin
+      const { data: existingUser } = await supabaseAdmin
         .from('users')
-        .upsert({ whatsapp_number: from }, { onConflict: 'whatsapp_number' })
         .select('id')
-        .single()
+        .eq('whatsapp_number', from)
+        .maybeSingle()
 
-      if (userError || !user) {
-        console.error('User upsert failed', userError)
-        return
+      let userId = existingUser?.id
+      if (!userId) {
+        isNewUser = true
+        const { data: created, error: userError } = await supabaseAdmin
+          .from('users')
+          .insert({ whatsapp_number: from })
+          .select('id')
+          .single()
+        if (userError || !created) {
+          console.error('User insert failed', userError)
+          return
+        }
+        userId = created.id
       }
-      targets = [{ userId: user.id, sentBy: null, label: null }]
+      targets = [{ userId, sentBy: null, label: null }]
     }
 
     let extracted: ExtractedBill | null = null
@@ -129,25 +258,36 @@ async function processMessage(message: { id: string; from: string; type: string;
 
     } else if (message.type === 'document' && message.document) {
       const mediaId  = message.document.id
-      rawContent = `[document: ${message.document.filename ?? mediaId}]`
+      const caption  = message.document.caption
+      rawContent = caption
+        ? `[document: ${message.document.filename ?? mediaId}] ${caption}`
+        : `[document: ${message.document.filename ?? mediaId}]`
 
       const { base64, mimeType: mime } = await downloadMedia(mediaId)
 
       if (mime === 'application/pdf') {
-        extracted = await extractBillFromPDF(base64)
+        extracted = await extractBillFromPDF(base64, caption)
       } else if (mime.startsWith('image/')) {
-        extracted = await extractBillFromImage(base64, mime as 'image/jpeg' | 'image/png' | 'image/webp')
+        extracted = await extractBillFromImage(base64, mime as 'image/jpeg' | 'image/png' | 'image/webp', caption)
       }
 
     } else if (message.type === 'image' && message.image) {
       const mediaId = message.image.id
-      rawContent = `[image: ${mediaId}]`
+      const caption = message.image.caption
+      rawContent = caption ? `[image: ${mediaId}] ${caption}` : `[image: ${mediaId}]`
       const { base64, mimeType: mime } = await downloadMedia(mediaId)
-      extracted = await extractBillFromImage(base64, mime as 'image/jpeg' | 'image/png' | 'image/webp')
+      extracted = await extractBillFromImage(base64, mime as 'image/jpeg' | 'image/png' | 'image/webp', caption)
+    }
+
+    // A brand-new user gets the welcome whatever they sent — and if their first
+    // message didn't parse, the welcome already explains how to use Sorted, so
+    // skip the cold "couldn't read that" error on top of it.
+    if (isNewUser) {
+      await sendWhatsApp(from, WELCOME_MESSAGE)
     }
 
     if (!extracted?.payee) {
-      await sendWhatsApp(from, "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date.")
+      if (!isNewUser) await sendWhatsApp(from, READ_FAIL_REPLY)
       return
     }
 
@@ -164,7 +304,7 @@ async function processMessage(message: { id: string; from: string; type: string;
           .from('bills')
           .select('id, payee')
           .eq('user_id', target.userId)
-          .eq('status', 'pending')
+          .in('status', ['pending', 'overdue'])
           .is('account_number', null)
 
         const needle = extracted.payee.toLowerCase().trim()
@@ -193,14 +333,21 @@ async function processMessage(message: { id: string; from: string; type: string;
 
     // Reminder — a nudge with no specific amount attached (e.g. "don't forget to pay the vet")
     if (extracted.message_type === 'reminder') {
+      let savedAny = false
       for (const target of targets) {
-        await supabaseAdmin.from('reminders').insert({
+        const { error: insertError } = await supabaseAdmin.from('reminders').insert({
           user_id:             target.userId,
           sent_by:             target.sentBy,
           sender_label:        target.label,
           message:             rawContent,
+          remind_at:           extracted.remind_at ? new Date(extracted.remind_at + '+02:00').toISOString() : null,
           whatsapp_message_id: message.id,
         })
+        if (insertError) {
+          console.error('Reminder insert failed', insertError)
+          continue
+        }
+        savedAny = true
 
         // Notify the account owner when a trusted sender sends the reminder.
         // Business-initiated, so it needs an approved template, not a free-form message.
@@ -225,15 +372,46 @@ async function processMessage(message: { id: string; from: string; type: string;
         }
       }
 
-      await sendWhatsApp(from, formatReminderConfirmation(extracted.payee, !!targets[0].sentBy))
+      if (!savedAny) {
+        await sendWhatsApp(from, SAVE_FAIL_REPLY)
+        return
+      }
+
+      let reply = formatReminderConfirmation(extracted.payee, !!targets[0].sentBy)
+      if (extracted.remind_at) {
+        const at = new Date(extracted.remind_at + '+02:00').toLocaleString('en-ZA', {
+          timeZone: 'Africa/Johannesburg', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+        })
+        reply += `\n\n⏰ I'll send a nudge on ${at}.`
+      }
+      await sendWhatsApp(from, reply)
       return
     }
 
     if (!extracted.amount) {
-      await sendWhatsApp(from, "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date.")
+      await sendWhatsApp(from, READ_FAIL_REPLY)
       return
     }
 
+    // Soft duplicate check — same payee and amount within the last 7 days on the
+    // first target's account. The bill is still saved (it might be legitimate, e.g.
+    // two kids at the same ballet school); the reply just flags it.
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const { data: recentSimilar } = await supabaseAdmin
+      .from('bills')
+      .select('id, payee, created_at')
+      .eq('user_id', targets[0].userId)
+      .eq('amount', extracted.amount)
+      .gte('created_at', weekAgo)
+    const needle = extracted.payee.toLowerCase().trim()
+    const looksDuplicate = (recentSimilar || []).some(b =>
+      b.payee?.toLowerCase().includes(needle) || needle.includes(b.payee?.toLowerCase() ?? '')
+    )
+
+    let savedAny = false
+    // The reply (sent once, after the loop) shows whether bank details were found —
+    // captured from the first target since a single reply can't cover them all.
+    let firstResolvedAccount: string | null = null
     for (const target of targets) {
       // Payee memory lookup for new bills — each account can have different saved
       // bank details for the same payee name, so this is resolved per target.
@@ -253,8 +431,9 @@ async function processMessage(message: { id: string; from: string; type: string;
           reference     = reference ?? savedPayee.default_reference
         }
       }
+      if (target === targets[0]) firstResolvedAccount = accountNumber
 
-      await supabaseAdmin.from('bills').insert({
+      const { error: insertError } = await supabaseAdmin.from('bills').insert({
         user_id:              target.userId,
         sent_by:              target.sentBy,
         payee:                extracted.payee,
@@ -272,6 +451,11 @@ async function processMessage(message: { id: string; from: string; type: string;
         // but it stays unconfirmed (unpayable) until its owner claims it as theirs.
         unconfirmed:          targets.length > 1,
       })
+      if (insertError) {
+        console.error('Bill insert failed', insertError)
+        continue
+      }
+      savedAny = true
 
       // Notify the account owner when a trusted sender adds a bill on their behalf.
       // This is business-initiated (the owner may not have messaged us in the last
@@ -295,16 +479,22 @@ async function processMessage(message: { id: string; from: string; type: string;
           }
         }
       }
-
-      // A single WhatsApp reply can't show different bank details per target, so
-      // when the same sender fans out to multiple accounts, reply using the first.
-      if (target === targets[0]) {
-        const reply = accountNumber
-          ? formatBillConfirmation(extracted.payee, extracted.amount, extracted.due_date, !!target.sentBy)
-          : formatIncompleteConfirmation(extracted.payee, extracted.amount, extracted.due_date, !!target.sentBy)
-        await sendWhatsApp(from, reply)
-      }
     }
+
+    if (!savedAny) {
+      await sendWhatsApp(from, SAVE_FAIL_REPLY)
+      return
+    }
+
+    // A single WhatsApp reply can't show different bank details per target, so
+    // when the same sender fans out to multiple accounts, reply using the first.
+    let reply = firstResolvedAccount
+      ? formatBillConfirmation(extracted.payee, extracted.amount, extracted.due_date, !!targets[0].sentBy)
+      : formatIncompleteConfirmation(extracted.payee, extracted.amount, extracted.due_date, !!targets[0].sentBy)
+    if (looksDuplicate) {
+      reply += `\n\n⚠️ Heads up — this looks similar to a bill from the last few days (same amount, same payee). If it's a duplicate, delete one on the dashboard.`
+    }
+    await sendWhatsApp(from, reply)
 
   } catch (err) {
     console.error('Webhook error', err)

@@ -5,6 +5,7 @@ create table if not exists users (
   name text,
   otp text,
   otp_expires_at timestamptz,
+  otp_attempts int default 0,  -- wrong guesses against the current OTP; 5 kills the code (brute-force guard)
   created_at timestamptz default now()
 );
 
@@ -57,6 +58,8 @@ create table if not exists reminders (
   sent_by text,                 -- whatsapp number of the trusted sender who sent it, null if the account owner sent it to themselves
   sender_label text,            -- trusted_senders.label at the time it was sent, for display
   message text not null,
+  remind_at timestamptz,        -- when to WhatsApp the owner a nudge ("remind me Monday 2pm"), null = no timed nudge
+  nudge_sent boolean default false,
   whatsapp_message_id text,
   dismissed boolean default false,
   created_at timestamptz default now()

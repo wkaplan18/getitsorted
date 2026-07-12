@@ -11,20 +11,33 @@ export async function PUT(req: NextRequest) {
   const { phone, otp, remember } = await req.json()
   if (!phone || !otp) return NextResponse.json({ error: 'phone and otp required' }, { status: 400 })
 
+  // select('*') rather than naming columns: otp_attempts may not exist yet if the
+  // schema migration lags the deploy, and login must keep working regardless.
   const { data: user } = await supabaseAdmin
     .from('users')
-    .select('id, otp, otp_expires_at')
+    .select('*')
     .eq('whatsapp_number', phone)
     .single()
 
-  if (!user) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  if (user.otp !== otp) return NextResponse.json({ error: 'invalid code' }, { status: 401 })
+  if (!user || !user.otp) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  // A 6-digit code must not be brute-forceable: 5 wrong guesses kills the code
+  // and the user has to text LOGIN again for a fresh one (which resets the count).
+  if ((user.otp_attempts ?? 0) >= 5) {
+    await supabaseAdmin.from('users').update({ otp: null, otp_expires_at: null }).eq('id', user.id)
+    return NextResponse.json({ error: 'too many attempts — request a new code' }, { status: 429 })
+  }
+
+  if (user.otp !== otp) {
+    await supabaseAdmin.from('users').update({ otp_attempts: (user.otp_attempts ?? 0) + 1 }).eq('id', user.id)
+    return NextResponse.json({ error: 'invalid code' }, { status: 401 })
+  }
   if (new Date(user.otp_expires_at) < new Date()) return NextResponse.json({ error: 'code expired' }, { status: 401 })
 
   // Clear OTP after use
   await supabaseAdmin
     .from('users')
-    .update({ otp: null, otp_expires_at: null })
+    .update({ otp: null, otp_expires_at: null, otp_attempts: 0 })
     .eq('id', user.id)
 
   return NextResponse.json({ ok: true, phone, token: makeSessionToken(phone, remember !== false) })

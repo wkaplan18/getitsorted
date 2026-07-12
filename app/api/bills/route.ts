@@ -69,8 +69,23 @@ export async function PATCH(req: NextRequest) {
   const { id, ...fields } = await req.json()
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
-  const allowed = ['status', 'bank_name', 'account_number', 'branch_code', 'reference', 'unconfirmed']
+  // payee/amount/due_date are editable because AI extraction gets things wrong —
+  // users must be able to correct a misread amount or payee.
+  const allowed = ['status', 'bank_name', 'account_number', 'branch_code', 'reference', 'unconfirmed', 'payee', 'amount', 'due_date']
   const update = Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.includes(k)))
+
+  if ('amount' in update) {
+    const amount = Number(update.amount)
+    if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
+    update.amount = amount
+  }
+  if ('payee' in update && !String(update.payee ?? '').trim()) {
+    return NextResponse.json({ error: 'payee cannot be empty' }, { status: 400 })
+  }
+  if ('due_date' in update && update.due_date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(String(update.due_date))) {
+    return NextResponse.json({ error: 'due_date must be YYYY-MM-DD or null' }, { status: 400 })
+  }
+
   if (fields.status === 'paid') update.paid_at = new Date().toISOString()
   if (fields.status === 'pending') update.paid_at = null
 

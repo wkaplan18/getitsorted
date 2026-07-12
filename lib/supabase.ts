@@ -39,6 +39,8 @@ export type Reminder = {
   sent_by: string | null
   sender_label: string | null
   message: string
+  remind_at: string | null        // when to send a WhatsApp nudge, null = no timed nudge
+  nudge_sent: boolean
   whatsapp_message_id: string | null
   dismissed: boolean
   created_at: string

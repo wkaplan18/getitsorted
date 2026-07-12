@@ -106,3 +106,12 @@ export function formatReminder(payee: string, amount: number, dueDate: string, a
   return msg
 }
 
+export function formatOverdueReminder(payee: string, amount: number, dueDate: string, accountNumber: string | null, reference: string | null): string {
+  const due = new Date(dueDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })
+  let msg = `⚠️ Overdue: R${amount.toFixed(2)} to *${payee}* was due on ${due}`
+  if (accountNumber) msg += `\nAccount: ${accountNumber}`
+  if (reference) msg += `\nRef: ${reference}`
+  msg += `\n\nPay it or mark it paid on your dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`
+  return msg
+}
+
