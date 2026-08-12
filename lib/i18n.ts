@@ -44,6 +44,10 @@ export type StringKey =
   | 'ask_business_name'
   | 'ask_trade'
   | 'ask_name'
+  | 'ask_bank'
+  | 'ask_account'
+  | 'bank_saved'
+  | 'bank_skipped'
   | 'ask_logo'
   | 'logo_saved'
   | 'logo_made'
@@ -95,6 +99,11 @@ const en: Strings = {
   ask_business_name: "What's your business called?",
   ask_trade: 'Got it, {business}. What work do you do?',
   ask_name: 'And your name?',
+  ask_bank:
+    'Which bank do you use? This is how your clients pay you.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…\n\nRather not say? Reply SKIP.',
+  ask_account: 'And your account number?',
+  bank_saved: 'Saved — {bank}, account {account}. This appears on every quote so your clients can pay you by EFT.',
+  bank_skipped: "No problem. You can add your banking details any time on your dashboard — until then your quotes won't show a way to pay you.",
   ask_logo:
     "Last thing — send me your logo as a picture if you have one.\nNo logo? Reply SKIP and I'll make you one.",
   logo_saved: 'Logo saved.',
@@ -154,6 +163,11 @@ const zu: Strings = {
   ask_business_name: 'Libizwa ngokuthi yini ibhizinisi lakho?',
   ask_trade: 'Ngiyabonga, {business}. Wenza msebenzi muni?',
   ask_name: 'Ngubani igama lakho?',
+  ask_bank:
+    'Usebenzisa liphi ibhange? Yilapho amakhasimende akho azokukhokhela khona.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…\n\nAwufuni ukusho? Phendula ngo-SKIP.',
+  ask_account: 'Ithini inombolo ye-akhawunti yakho?',
+  bank_saved: 'Kugciniwe — {bank}, i-akhawunti {account}. Lokhu kuvela kuwo wonke ama-quote ukuze amakhasimende akhokhe nge-EFT.',
+  bank_skipped: 'Akunankinga. Ungangeza imininingwane yebhange noma nini ku-dashboard yakho — kuze kube yilapho, ama-quote akho ngeke akhombise indlela yokukukhokhela.',
   ask_logo:
     'Okokugcina — ngithumele ilogo yakho njengesithombe uma unayo.\nAwunayo ilogo? Phendula ngo-SKIP ngikwenzele eyakho.',
   logo_saved: 'Ilogo igciniwe.',
@@ -213,6 +227,11 @@ const af: Strings = {
   ask_business_name: 'Wat is jou besigheid se naam?',
   ask_trade: 'Reg so, {business}. Watter werk doen jy?',
   ask_name: 'En jou naam?',
+  ask_bank:
+    'Watter bank gebruik jy? Dit is hoe jou kliënte jou betaal.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…\n\nLiewer nie sê nie? Antwoord SKIP.',
+  ask_account: 'En jou rekeningnommer?',
+  bank_saved: 'Gestoor — {bank}, rekening {account}. Dit verskyn op elke kwotasie sodat jou kliënte jou per EFT kan betaal.',
+  bank_skipped: 'Geen probleem nie. Jy kan jou bankbesonderhede enige tyd op jou dashboard byvoeg — tot dan wys jou kwotasies geen manier om jou te betaal nie.',
   ask_logo:
     'Laaste ding — stuur my jou logo as \'n prent as jy een het.\nGeen logo nie? Antwoord SKIP, dan maak ek vir jou een.',
   logo_saved: 'Logo gestoor.',

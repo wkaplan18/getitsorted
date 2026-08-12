@@ -182,6 +182,8 @@ export type ConvoState = {
     | 'ask_business_name'
     | 'ask_trade'
     | 'ask_name'
+    | 'ask_bank'
+    | 'ask_account'
     | 'ask_logo'
     // The guided quote, one question per message.
     | 'ask_client_name'

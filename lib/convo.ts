@@ -13,6 +13,7 @@ import { supabaseAdmin } from './supabase'
 import { sendWhatsApp, downloadMedia } from './whatsapp'
 import { t, toLang, langFromChoice, type Lang } from './i18n'
 import { applyQuoteEdit, type ExtractedBill } from './claude'
+import { resolveBank, cleanAccountNumber } from './banks'
 import {
   renderDraft, renderLines, saveQuote, setConvoState, quoteUrl,
   type ConvoState, type Draft,
@@ -28,12 +29,14 @@ export type ConvoUser = {
   trade: string | null
   logo_url: string | null
   vat_number: string | null
+  bank_name: string | null
+  account_number: string | null
   onboarded_at: string | null
   convo_state: unknown | null
 }
 
 export const CONVO_USER_COLUMNS =
-  'id, whatsapp_number, name, language, business_name, trade, logo_url, vat_number, onboarded_at, convo_state'
+  'id, whatsapp_number, name, language, business_name, trade, logo_url, vat_number, bank_name, account_number, onboarded_at, convo_state'
 
 function readState(user: ConvoUser): ConvoState | null {
   const state = user.convo_state
@@ -143,7 +146,48 @@ export async function handleConvoStep(
       if (text && !SKIP_WORDS.has(lower)) {
         await supabaseAdmin.from('users').update({ name: text }).eq('id', user.id)
       }
+      await setConvoState(user.id, { step: 'ask_bank', draft: state.draft })
+      await sendWhatsApp(from, t(lang, 'ask_bank'))
+      return true
+    }
+
+    case 'ask_bank': {
+      if (!text || SKIP_WORDS.has(lower)) {
+        await setConvoState(user.id, { step: 'ask_logo', draft: state.draft })
+        await sendWhatsApp(from, t(lang, 'bank_skipped'))
+        await sendWhatsApp(from, t(lang, 'ask_logo'))
+        return true
+      }
+      // Branch code is derived from the bank rather than asked for — every SA
+      // bank has one universal code, and almost nobody knows theirs. An
+      // unrecognised bank keeps the name with a null code; the quote is still
+      // payable on name + account number.
+      const bank = resolveBank(text)
+      await supabaseAdmin
+        .from('users')
+        .update({ bank_name: bank.name, branch_code: bank.branchCode })
+        .eq('id', user.id)
+      await setConvoState(user.id, { step: 'ask_account', draft: state.draft })
+      await sendWhatsApp(from, t(lang, 'ask_account'))
+      return true
+    }
+
+    case 'ask_account': {
+      const account = cleanAccountNumber(text)
+      if (!account) {
+        // Anything with no digits in it isn't an account number. Ask again
+        // rather than saving a blank and printing an unpayable quote.
+        await sendWhatsApp(from, t(lang, 'ask_account'))
+        return true
+      }
+      await supabaseAdmin.from('users').update({ account_number: account }).eq('id', user.id)
+
+      const fresh = await reloadUser(user.id)
       await setConvoState(user.id, { step: 'ask_logo', draft: state.draft })
+      await sendWhatsApp(from, t(lang, 'bank_saved', {
+        bank: fresh?.bank_name ?? 'your bank',
+        account,
+      }))
       await sendWhatsApp(from, t(lang, 'ask_logo'))
       return true
     }
