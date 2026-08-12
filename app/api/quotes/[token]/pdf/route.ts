@@ -65,7 +65,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     // Previously this threw into a blank response with no trace of why. A
     // remote logo that won't load is the most likely cause, so name it.
     console.error(`[pdf] render failed for ${quote.number} (logo: ${business.logo_url ?? 'none'}):`, err)
-    return NextResponse.json({ error: 'could not build the PDF' }, { status: 500 })
+    // ?debug=1 returns the actual failure. The link is already gated behind an
+    // unguessable token and this is faster than a round trip through the
+    // hosting logs; drop it once PDF generation has been stable for a while.
+    const debug = new URL(req.url).searchParams.get('debug') === '1'
+    return NextResponse.json(
+      debug
+        ? { error: 'could not build the PDF', detail: (err as Error).message, stack: (err as Error).stack?.split('\n').slice(0, 8) }
+        : { error: 'could not build the PDF' },
+      { status: 500 },
+    )
   }
 
   const disposition = inline ? 'inline' : 'attachment'
