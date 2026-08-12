@@ -68,13 +68,13 @@ export default function Home() {
           margin-left: auto;
         }
 
-        /* Only transform and opacity animate. Spring-ish ease so a card lifts
-           rather than slides. */
-        .lift { transition: transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.22s ease; }
+        /* Only transform and opacity animate. Ease-out-quint: fast departure,
+           long settle, no overshoot — weight without wobble. */
+        .lift { transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease; }
         .lift:hover { transform: translateY(-3px); }
         .lift:focus-visible { outline: 2px solid #B4530A; outline-offset: 3px; }
 
-        .btn { transition: transform 0.15s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.15s ease; display: inline-block; text-decoration: none; }
+        .btn { transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s ease; display: inline-block; text-decoration: none; }
         .btn:hover { transform: translateY(-2px); }
         .btn:active { transform: translateY(0); }
         .btn:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
