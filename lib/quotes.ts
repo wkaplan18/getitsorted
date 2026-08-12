@@ -175,11 +175,20 @@ export type Draft = {
 
 export type ConvoState = {
   step:
+    // One-time profile setup. Everything captured here is stored against the
+    // user's WhatsApp number and reused on every future quote — they are never
+    // asked again.
     | 'pick_language'
     | 'ask_business_name'
     | 'ask_trade'
     | 'ask_name'
     | 'ask_logo'
+    // The guided quote, one question per message.
+    | 'ask_client_name'
+    | 'ask_client_address'
+    | 'ask_quote_items'
+    // Free-form path: the user typed a whole quote in one go, so it's shown
+    // back for confirmation instead of being collected step by step.
     | 'confirm_quote'
     | 'disambiguate'
   draft?: Draft
@@ -204,17 +213,29 @@ export async function setConvoState(userId: string, state: ConvoState | null): P
  * item with the amount last reads correctly everywhere and costs fewer bytes.
  */
 export function renderDraft(draft: Draft, lang: Lang, vatRegistered: boolean): string {
+  return [
+    t(lang, 'quote_header'),
+    renderLines(draft, lang, vatRegistered),
+    t(lang, 'quote_confirm'),
+  ].join('\n\n')
+}
+
+/**
+ * Just the customer, the priced lines, and the total — no header, no call to
+ * action. Shared by the draft preview and the "here's your quote" message so
+ * the figures are formatted identically in both.
+ */
+export function renderLines(draft: Draft, lang: Lang, vatRegistered: boolean): string {
   const items = draft.line_items
   const { subtotal, vat_amount, total } = totals(items, vatRegistered)
 
-  const lines: string[] = [t(lang, 'quote_header')]
+  const lines: string[] = []
 
   if (draft.customer) {
-    lines.push('')
     lines.push(t(lang, 'quote_for', { customer: draft.customer }))
+    lines.push('')
   }
 
-  lines.push('')
   for (const item of items) {
     // A single-quantity line would otherwise print the same figure twice
     // ("Materials — R1,200.00 = R1,200.00"), which reads like a mistake.
@@ -232,8 +253,6 @@ export function renderDraft(draft: Draft, lang: Lang, vatRegistered: boolean): s
     lines.push(`VAT 15%   ${fmtRand(vat_amount)}`)
   }
   lines.push(`*${t(lang, 'quote_total')}  ${fmtRand(total)}*`)
-  lines.push('')
-  lines.push(t(lang, 'quote_confirm'))
 
   return lines.join('\n')
 }

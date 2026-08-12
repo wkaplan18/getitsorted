@@ -1,5 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { monogram } from '../monogram'
 
 // Palette: deliberately not a stock framework blue. A quote from a one-person
 // trade business should read as solid and warm, not as a SaaS invoice.
@@ -15,6 +16,8 @@ const s = StyleSheet.create({
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
   brandLeft:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, maxWidth: 300 },
   logo:        { width: 52, height: 52, objectFit: 'contain' },
+  mark:        { width: 52, height: 52, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  markText:    { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#FFFFFF', letterSpacing: 0.5 },
   company:     { fontSize: 15, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 3 },
   companyMeta: { fontSize: 7.5, color: MUTED, lineHeight: 1.5 },
 
@@ -117,6 +120,7 @@ export function QuotePDF(props: QuotePDFProps) {
   } = props
 
   const title = docType === 'invoice' ? 'INVOICE' : 'QUOTATION'
+  const mark = monogram(businessName)
   const hasBank = Boolean(bankName || accountNumber)
   // VAT only appears when the business is actually registered. Most of these
   // users are not, and a R0.00 VAT row on their quote invites questions they
@@ -129,7 +133,15 @@ export function QuotePDF(props: QuotePDFProps) {
 
         <View style={s.header}>
           <View style={s.brandLeft}>
-            {logoUrl ? <Image src={logoUrl} style={s.logo} /> : null}
+            {logoUrl ? (
+              <Image src={logoUrl} style={s.logo} />
+            ) : (
+              // No uploaded logo — a derived monogram, so the quote is never
+              // headed by an empty space where a brand should be.
+              <View style={[s.mark, { backgroundColor: mark.color }]}>
+                <Text style={s.markText}>{mark.text}</Text>
+              </View>
+            )}
             <View>
               <Text style={s.company}>{businessName}</Text>
               <Text style={s.companyMeta}>

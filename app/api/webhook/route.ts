@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { extractBillFromText, extractBillFromPDF, extractBillFromImage, ExtractedBill, QUOTE_CONFIDENCE_FLOOR } from '@/lib/claude'
 import { sendWhatsApp, sendWhatsAppTemplate, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation, formatReminderConfirmation } from '@/lib/whatsapp'
 import {
-  handleConvoStep, pendingDisambiguation, startLanguagePicker, startQuote, askBillOrQuote,
+  handleConvoStep, pendingDisambiguation, startLanguagePicker, startGuidedQuote, startQuote, askBillOrQuote,
   CONVO_USER_COLUMNS, type ConvoUser,
 } from '@/lib/convo'
 import { setConvoState } from '@/lib/quotes'
@@ -28,37 +28,28 @@ type InboundMessage = {
 const READ_FAIL_REPLY = "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date."
 const SAVE_FAIL_REPLY = "Something went wrong saving that on my side — it has NOT been added. Please try sending it again in a minute."
 
-const WELCOME_MESSAGE = `👋 Welcome to *Sorted* — I help you send quotes and get paid, and I keep track of the bills you owe.
+const WELCOME_MESSAGE = `👋 Welcome to *Sorted* — I help you send professional quotes and get paid.
 
-Just message me naturally:
-🧾 Price a job: "Quote for Mrs Naidoo, paint 3 bedrooms R850 each"
-📄 Forward an invoice you need to pay (PDF or photo)
-💬 Type a bill: "pay ballet R850 by Friday"
-📌 Or a nudge: "remind me to pay the vet on Monday"
+Reply *QUOTE* and I'll walk you through it. I only ask for your business details once, then every quote after that takes under a minute.
 
-Everything lands on your dashboard:
-${process.env.NEXT_PUBLIC_APP_URL}
-
-Text *LANGUAGE* to switch to isiZulu or Afrikaans, *LOGIN* for a dashboard code, or *HELP* to see this again.`
+Text *HELP* any time to see everything I can do.`
 
 const HELP_MESSAGE = `Here's what I can do:
 
-*Money in — getting paid*
-🧾 Send me a job: "Quote for Mrs Naidoo, paint 3 bedrooms R850 each, materials R1200"
-   I'll make a PDF quote with your logo and a payment link you can forward.
+*Sending quotes*
+🧾 *QUOTE* — I'll ask you three quick questions and send back a PDF quote with your logo, ready to forward to your client.
+📋 *QUOTES* — your recent quotes
 
-*Money out — what you owe*
+*Keeping track of what you owe*
 📄 Forward an invoice (PDF or photo) — I'll pull out the amount, payee and banking details
 💬 Type a bill: "pay ballet R850 by Friday"
 📌 Set a reminder: "remind me to pay the vet Monday 2pm"
-🏦 Save bank details: "ballet banking details are FNB 98887765"
+🏦 *BILLS* — see what's still pending
 
-Commands:
-*QUOTES* — your recent quotes
-*BILLS* — see what's still pending
-*LOGIN* — get a dashboard login code
-*LANGUAGE* — reply in English, isiZulu or Afrikaans
-*STOP* — stop sending to someone's dashboard (trusted senders)
+*Settings*
+🔑 *LOGIN* — get a dashboard login code
+🌍 *LANGUAGE* — reply in English, isiZulu or Afrikaans
+🚫 *STOP* — stop sending to someone's dashboard (trusted senders)
 
 Dashboard: ${process.env.NEXT_PUBLIC_APP_URL}`
 
@@ -136,6 +127,33 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
     } else {
       await sendWhatsApp(from, t('en', 'pick_language'))
     }
+    return true
+  }
+
+  // "QUOTE" — the main way in. Starts the guided quote, asking only for the
+  // setup this number hasn't already given. Checked before "QUOTES" (plural,
+  // the history list) so the two never collide.
+  if (cmd === 'quote' || cmd === 'new quote' || cmd === 'kwotasie' || cmd === 'iquote' || cmd === 'i-quote') {
+    let target = user
+    if (!target) {
+      // First contact via QUOTE — create the account here rather than letting
+      // it fall through to extraction, which has nothing to extract.
+      const { data: created, error } = await supabaseAdmin
+        .from('users')
+        .insert({ whatsapp_number: from })
+        .select(CONVO_USER_COLUMNS)
+        .single()
+      if (error || !created) {
+        console.error('User insert failed on QUOTE', error)
+        await sendWhatsApp(from, t(lang, 'save_failed'))
+        return true
+      }
+      target = created as ConvoUser
+      // A row created just now carries the column default language 'en', which
+      // would skip the picker. Clear it so a brand-new user still gets to pick.
+      target = { ...target, language: null }
+    }
+    await startGuidedQuote(target)
     return true
   }
 

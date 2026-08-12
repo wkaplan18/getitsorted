@@ -13,6 +13,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { sendWhatsAppTemplate } from '@/lib/whatsapp'
 import { loadQuoteByToken, markViewed } from '@/lib/quoteView'
 import { paystackConfigured } from '@/lib/paystack'
+import { monogram } from '@/lib/monogram'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,6 +59,7 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
   }
 
   const canPay = !isPaid && paystackConfigured() && Number(quote.total) > 0
+  const mark = monogram(business.business_name)
 
   return (
     <main className="min-h-screen bg-[#FAF9F6] px-4 py-8 sm:py-14">
@@ -74,7 +76,15 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
                   alt=""
                   className="h-14 w-14 shrink-0 rounded-lg object-contain"
                 />
-              ) : null}
+              ) : (
+                <div
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg text-xl font-bold tracking-wide text-white"
+                  style={{ background: mark.color }}
+                  aria-hidden="true"
+                >
+                  {mark.text}
+                </div>
+              )}
               <div>
                 <h1 className="text-lg font-semibold tracking-[-0.01em] text-[#1A1A17]">
                   {business.business_name}

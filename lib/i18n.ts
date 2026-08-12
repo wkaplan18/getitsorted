@@ -46,8 +46,14 @@ export type StringKey =
   | 'ask_name'
   | 'ask_logo'
   | 'logo_saved'
+  | 'logo_made'
   | 'onboarding_done'
   | 'onboarding_offer'
+  // guided quote wizard
+  | 'ask_client_name'
+  | 'ask_client_address'
+  | 'ask_quote_items'
+  | 'quote_thanks'
   // quoting
   | 'quote_header'
   | 'quote_for'
@@ -82,20 +88,27 @@ export type StringKey =
 
 const en: Strings = {
   pick_language:
-    "Hi! I'm Sorted. I help you send quotes and get paid, and I keep track of the bills you owe.\n\nFirst — which language should I reply in?\n1  English\n2  isiZulu\n3  Afrikaans",
+    "Hi! I'm Sorted. I help you send professional quotes and get paid.\n\nFirst — which language should I reply in?\n1  English\n2  isiZulu\n3  Afrikaans",
   language_set: "Done, I'll reply in English from now on.",
 
-  welcome: "Hi! I'm Sorted. Send me a bill to track, or tell me about a job to make a quote.",
+  welcome: "Hi! I'm Sorted. Reply QUOTE whenever you need to send a client a quote.",
   ask_business_name: "What's your business called?",
   ask_trade: 'Got it, {business}. What work do you do?',
   ask_name: 'And your name?',
   ask_logo:
-    "Last thing — send me your logo as a picture if you have one.\nNo logo? Just reply SKIP and I'll use your business name.",
+    "Last thing — send me your logo as a picture if you have one.\nNo logo? Reply SKIP and I'll make you one.",
   logo_saved: 'Logo saved.',
+  logo_made: "No problem — I've made you a logo from your business name. It'll appear on every quote.",
   onboarding_done:
-    "Done. You're set up.\n\nTo make a quote, just tell me who it's for and what you're charging.\nLike this:\n\"Quote for Mrs Naidoo, paint 3 bedrooms R850 each, materials R1200\"\n\nTry it now.",
+    "You're set up. I've saved your details, so I'll never ask again — every quote from now on uses them automatically.",
   onboarding_offer:
-    "Looks like you want to send a quote. I just need a few details first — it takes a minute.",
+    "Let's get you set up first — it takes a minute, and I'll only ask once.",
+
+  ask_client_name: "Step 1 of 3 — What is your client's name?",
+  ask_client_address: "Step 2 of 3 — What is their address?\n\nDon't have it? Reply N/A.",
+  ask_quote_items:
+    'Step 3 of 3 — What work are you doing, and what are you charging?\n\nFor example:\n"Paint 3 bedrooms R850 each, materials R1200"',
+  quote_thanks: 'Thanks. Putting your quote together now…',
 
   quote_header: "Here's the quote:",
   quote_for: 'FOR: {customer}',
@@ -134,20 +147,27 @@ const en: Strings = {
 
 const zu: Strings = {
   pick_language:
-    'Sawubona! NginguSorted. Ngikusiza uthumele ama-quote uthole nemali, futhi ngigcine amabhili okumele uwakhokhe.\n\nOkokuqala — ngikhulume nawe ngaluphi ulimi?\n1  IsiNgisi\n2  IsiZulu\n3  IsiBhunu',
+    'Sawubona! NginguSorted. Ngikusiza uthumele ama-quote asezingeni eliphezulu uthole nemali.\n\nOkokuqala — ngikhulume nawe ngaluphi ulimi?\n1  IsiNgisi\n2  IsiZulu\n3  IsiBhunu',
   language_set: 'Kulungile, ngizophendula ngesiZulu kusukela manje.',
 
-  welcome: 'Sawubona! NginguSorted. Ngithumele ibhili ukuze ngiligcine, noma ungitshele ngomsebenzi ukuze ngenze i-quote.',
+  welcome: 'Sawubona! NginguSorted. Phendula ngo-QUOTE noma nini uma udinga ukuthumela ikhasimende i-quote.',
   ask_business_name: 'Libizwa ngokuthi yini ibhizinisi lakho?',
   ask_trade: 'Ngiyabonga, {business}. Wenza msebenzi muni?',
   ask_name: 'Ngubani igama lakho?',
   ask_logo:
-    'Okokugcina — ngithumele ilogo yakho njengesithombe uma unayo.\nAwunayo ilogo? Phendula ngo-SKIP ngisebenzise igama lebhizinisi lakho.',
+    'Okokugcina — ngithumele ilogo yakho njengesithombe uma unayo.\nAwunayo ilogo? Phendula ngo-SKIP ngikwenzele eyakho.',
   logo_saved: 'Ilogo igciniwe.',
+  logo_made: 'Akunankinga — ngikwenzele ilogo ngegama lebhizinisi lakho. Izovela kuwo wonke ama-quote.',
   onboarding_done:
-    'Kulungile. Usulungile.\n\nUkwenza i-quote, ngitshele nje ukuthi ngeyabani nokuthi ubiza malini.\nNjengalokhu:\n"Quote ka-Mrs Naidoo, penda amakamelo ama-3 R850 ngalinye, izinto R1200"\n\nZama manje.',
+    'Usulungile. Ngiyigcinile imininingwane yakho, ngeke ngiphinde ngikubuze — wonke ama-quote azosebenzisa yona ngokuzenzakalela.',
   onboarding_offer:
-    'Kubukeka sengathi ufuna ukuthumela i-quote. Ngidinga imininingwane embalwa kuqala — kuthatha umzuzu.',
+    'Ake ngiqale ngikulungiselele — kuthatha umzuzu, futhi ngizobuza kanye kuphela.',
+
+  ask_client_name: 'Isinyathelo 1 kwezi-3 — Ngubani igama lekhasimende lakho?',
+  ask_client_address: 'Isinyathelo 2 kwezi-3 — Ithini ikheli labo?\n\nAwunalo? Phendula ngo-N/A.',
+  ask_quote_items:
+    'Isinyathelo 3 kwezi-3 — Uwenza muphi umsebenzi, futhi ubiza malini?\n\nIsibonelo:\n"Penda amakamelo ama-3 R850 ngalinye, izinto R1200"',
+  quote_thanks: 'Ngiyabonga. Ngiyalungisa i-quote yakho manje…',
 
   quote_header: 'Nayi i-quote:',
   quote_for: 'EYA: {customer}',
@@ -186,20 +206,27 @@ const zu: Strings = {
 
 const af: Strings = {
   pick_language:
-    'Hallo! Ek is Sorted. Ek help jou kwotasies stuur en betaal word, en ek hou tred met die rekeninge wat jy skuld.\n\nEerstens — in watter taal moet ek antwoord?\n1  Engels\n2  isiZulu\n3  Afrikaans',
+    'Hallo! Ek is Sorted. Ek help jou professionele kwotasies stuur en betaal word.\n\nEerstens — in watter taal moet ek antwoord?\n1  Engels\n2  isiZulu\n3  Afrikaans',
   language_set: 'Reg so, ek antwoord voortaan in Afrikaans.',
 
-  welcome: 'Hallo! Ek is Sorted. Stuur my \'n rekening om by te hou, of vertel my van \'n werk om \'n kwotasie te maak.',
+  welcome: 'Hallo! Ek is Sorted. Antwoord KWOTASIE wanneer jy vir \'n kliënt \'n kwotasie moet stuur.',
   ask_business_name: 'Wat is jou besigheid se naam?',
   ask_trade: 'Reg so, {business}. Watter werk doen jy?',
   ask_name: 'En jou naam?',
   ask_logo:
-    'Laaste ding — stuur my jou logo as \'n prent as jy een het.\nGeen logo nie? Antwoord net SKIP, dan gebruik ek jou besigheidsnaam.',
+    'Laaste ding — stuur my jou logo as \'n prent as jy een het.\nGeen logo nie? Antwoord SKIP, dan maak ek vir jou een.',
   logo_saved: 'Logo gestoor.',
+  logo_made: 'Geen probleem nie — ek het vir jou \'n logo uit jou besigheidsnaam gemaak. Dit verskyn op elke kwotasie.',
   onboarding_done:
-    'Klaar. Jy is opgestel.\n\nOm \'n kwotasie te maak, vertel my net vir wie dit is en wat jy vra.\nSoos hierdie:\n"Kwotasie vir Mev Naidoo, verf 3 slaapkamers R850 elk, materiaal R1200"\n\nProbeer dit nou.',
+    'Jy is opgestel. Ek het jou besonderhede gestoor, so ek vra nooit weer nie — elke kwotasie gebruik hulle outomaties.',
   onboarding_offer:
-    'Dit lyk of jy \'n kwotasie wil stuur. Ek kort net \'n paar besonderhede eers — dit vat \'n minuut.',
+    'Kom ons stel jou eers op — dit vat \'n minuut, en ek vra net een keer.',
+
+  ask_client_name: 'Stap 1 van 3 — Wat is jou kliënt se naam?',
+  ask_client_address: 'Stap 2 van 3 — Wat is hulle adres?\n\nHet jy dit nie? Antwoord N/A.',
+  ask_quote_items:
+    'Stap 3 van 3 — Watter werk doen jy, en wat vra jy?\n\nByvoorbeeld:\n"Verf 3 slaapkamers R850 elk, materiaal R1200"',
+  quote_thanks: 'Dankie. Ek stel nou jou kwotasie saam…',
 
   quote_header: 'Hier is die kwotasie:',
   quote_for: 'VIR: {customer}',
