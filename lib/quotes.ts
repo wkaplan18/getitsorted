@@ -123,6 +123,49 @@ export function normaliseName(name: string): string {
 // Customers
 // ---------------------------------------------------------------------------
 
+/**
+ * The user's most recently quoted clients, newest first.
+ *
+ * Ordered by their last quote rather than when they were created — a plumber's
+ * regular from last week matters more than the first customer he ever entered.
+ */
+export async function recentCustomers(userId: string, limit = 5): Promise<Customer[]> {
+  const { data: quotes } = await supabaseAdmin
+    .from('quotes')
+    .select('customer_id, created_at')
+    .eq('user_id', userId)
+    .not('customer_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(40)
+
+  const seen: string[] = []
+  for (const row of quotes ?? []) {
+    const id = row.customer_id as string
+    if (id && !seen.includes(id)) seen.push(id)
+    if (seen.length >= limit) break
+  }
+  if (seen.length === 0) return []
+
+  const { data } = await supabaseAdmin.from('customers').select('*').in('id', seen)
+  // .in() returns rows in arbitrary order — restore most-recent-first.
+  return seen
+    .map(id => (data ?? []).find(c => c.id === id))
+    .filter(Boolean) as Customer[]
+}
+
+/** Finds a saved customer by name, tolerating case and spacing. Null if new. */
+export async function findCustomer(userId: string, name: string): Promise<Customer | null> {
+  const normalised = normaliseName(name)
+  if (!normalised) return null
+  const { data } = await supabaseAdmin
+    .from('customers')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('normalised_name', normalised)
+    .maybeSingle()
+  return (data as Customer | null) ?? null
+}
+
 /** Finds an existing customer by normalised name, or creates one. */
 export async function upsertCustomer(
   userId: string,
@@ -173,6 +216,9 @@ export type Draft = {
   raw_message?: string
 }
 
+/** One entry in the "who is this for?" list, frozen at the moment it was sent. */
+export type ClientOption = { id: string; name: string; address: string | null }
+
 export type ConvoState = {
   step:
     // One-time profile setup. Everything captured here is stored against the
@@ -194,6 +240,9 @@ export type ConvoState = {
     | 'confirm_quote'
     | 'disambiguate'
   draft?: Draft
+  // The numbered client list as shown, so a reply of "2" resolves to the same
+  // person even if a quote was saved in between and reordered the list.
+  client_options?: ClientOption[]
   // For 'disambiguate': the original message, replayed down whichever path the
   // user picks so they never have to type it twice.
   pending_message?: string

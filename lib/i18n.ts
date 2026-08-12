@@ -55,6 +55,8 @@ export type StringKey =
   | 'onboarding_offer'
   // guided quote wizard
   | 'ask_client_name'
+  | 'ask_client_pick'
+  | 'client_known'
   | 'ask_client_address'
   | 'ask_quote_items'
   | 'quote_thanks'
@@ -114,6 +116,9 @@ const en: Strings = {
     "Let's get you set up first — it takes a minute, and I'll only ask once.",
 
   ask_client_name: "Step 1 of 3 — What is your client's name?",
+  ask_client_pick:
+    "Step 1 of 3 — Who is this quote for?\n\n{list}\n\nReply with a number, or type a new client's name.",
+  client_known: 'Got it — {customer}. I already have their details.',
   ask_client_address: "Step 2 of 3 — What is their address?\n\nDon't have it? Reply N/A.",
   ask_quote_items:
     'Step 3 of 3 — What work are you doing, and what are you charging?\n\nFor example:\n"Paint 3 bedrooms R850 each, materials R1200"',
@@ -178,6 +183,9 @@ const zu: Strings = {
     'Ake ngiqale ngikulungiselele — kuthatha umzuzu, futhi ngizobuza kanye kuphela.',
 
   ask_client_name: 'Isinyathelo 1 kwezi-3 — Ngubani igama lekhasimende lakho?',
+  ask_client_pick:
+    'Isinyathelo 1 kwezi-3 — Le quote ingeyabani?\n\n{list}\n\nPhendula ngenombolo, noma ubhale igama lekhasimende elisha.',
+  client_known: 'Ngiyabonga — {customer}. Sengivele nginayo imininingwane yabo.',
   ask_client_address: 'Isinyathelo 2 kwezi-3 — Ithini ikheli labo?\n\nAwunalo? Phendula ngo-N/A.',
   ask_quote_items:
     'Isinyathelo 3 kwezi-3 — Uwenza muphi umsebenzi, futhi ubiza malini?\n\nIsibonelo:\n"Penda amakamelo ama-3 R850 ngalinye, izinto R1200"',
@@ -242,6 +250,9 @@ const af: Strings = {
     'Kom ons stel jou eers op — dit vat \'n minuut, en ek vra net een keer.',
 
   ask_client_name: 'Stap 1 van 3 — Wat is jou kliënt se naam?',
+  ask_client_pick:
+    "Stap 1 van 3 — Vir wie is hierdie kwotasie?\n\n{list}\n\nAntwoord met 'n nommer, of tik 'n nuwe kliënt se naam.",
+  client_known: 'Reg so — {customer}. Ek het reeds hulle besonderhede.',
   ask_client_address: 'Stap 2 van 3 — Wat is hulle adres?\n\nHet jy dit nie? Antwoord N/A.',
   ask_quote_items:
     'Stap 3 van 3 — Watter werk doen jy, en wat vra jy?\n\nByvoorbeeld:\n"Verf 3 slaapkamers R850 elk, materiaal R1200"',

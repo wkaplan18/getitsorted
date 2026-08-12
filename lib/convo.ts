@@ -16,7 +16,8 @@ import { applyQuoteEdit, type ExtractedBill } from './claude'
 import { resolveBank, cleanAccountNumber } from './banks'
 import {
   renderDraft, renderLines, saveQuote, setConvoState, quoteUrl,
-  type ConvoState, type Draft,
+  recentCustomers, findCustomer,
+  type ConvoState, type Draft, type ClientOption,
 } from './quotes'
 
 /** The subset of the users row this module needs. */
@@ -57,6 +58,38 @@ const NO_ADDRESS = new Set(['n/a', 'na', 'none', 'no', 'skip', 'geen', 'nee', 'c
 
 function emptyDraft(): Draft {
   return { customer: null, customer_address: null, line_items: [] }
+}
+
+/**
+ * Step 1, with the user's recent clients offered as a numbered list so a repeat
+ * job doesn't mean retyping a name and address he's already given us.
+ *
+ * The list is stored on the conversation state, not recomputed on the reply —
+ * a quote saved between the two messages would otherwise renumber the options
+ * under him and pick the wrong client.
+ */
+async function askForClient(user: ConvoUser, lang: Lang, draft: Draft): Promise<void> {
+  const recent = await recentCustomers(user.id, 5)
+
+  if (recent.length === 0) {
+    await setConvoState(user.id, { step: 'ask_client_name', draft })
+    await sendWhatsApp(user.whatsapp_number, t(lang, 'ask_client_name'))
+    return
+  }
+
+  const options = recent.map(c => ({ id: c.id, name: c.name, address: c.address }))
+  const list = options.map((c, i) => `${i + 1}. ${c.name}`).join('\n')
+
+  await setConvoState(user.id, { step: 'ask_client_name', draft, client_options: options })
+  await sendWhatsApp(user.whatsapp_number, t(lang, 'ask_client_pick', { list }))
+}
+
+/** Maps a bare "2" onto the list the user was shown. Null for anything else. */
+function pickFromList(text: string, options?: ClientOption[]): ClientOption | null {
+  if (!options || options.length === 0) return null
+  if (!/^\d{1,2}$/.test(text.trim())) return null
+  const index = parseInt(text.trim(), 10) - 1
+  return options[index] ?? null
 }
 
 // ---------------------------------------------------------------------------
@@ -109,8 +142,7 @@ export async function handleConvoStep(
         await sendWhatsApp(from, `${t(picked, 'onboarding_offer')}\n\n${t(picked, 'ask_business_name')}`)
       } else if (state.draft) {
         // Already has a profile — straight to the quote.
-        await setConvoState(user.id, { step: 'ask_client_name', draft: state.draft })
-        await sendWhatsApp(from, t(picked, 'ask_client_name'))
+        await askForClient(user, picked, state.draft)
       } else {
         await setConvoState(user.id, null)
         const dashboard = process.env.NEXT_PUBLIC_APP_URL
@@ -216,17 +248,40 @@ export async function handleConvoStep(
       }
 
       // Otherwise straight into the guided quote they asked for.
-      await setConvoState(user.id, { step: 'ask_client_name', draft: emptyDraft() })
-      await sendWhatsApp(from, t(lang, 'ask_client_name'))
+      await askForClient(user, lang, emptyDraft())
       return true
     }
 
     case 'ask_client_name': {
       if (!text) {
-        await sendWhatsApp(from, t(lang, 'ask_client_name'))
+        await askForClient(user, lang, state.draft ?? emptyDraft())
         return true
       }
-      const draft: Draft = { ...(state.draft ?? emptyDraft()), customer: text }
+
+      const base = state.draft ?? emptyDraft()
+
+      // A bare number picks from the list they were just shown. Anything else
+      // is a name — which may still turn out to be someone already saved,
+      // because people type the name rather than count down a list.
+      const picked = pickFromList(text, state.client_options)
+      const known = picked ?? (await findCustomer(user.id, text))
+
+      if (known) {
+        const draft: Draft = { ...base, customer: known.name, customer_address: known.address }
+        await sendWhatsApp(from, t(lang, 'client_known', { customer: known.name }))
+        // Their address is already on file, so step 2 would be asking a repeat
+        // client something we already know. Skip straight to the work.
+        if (known.address) {
+          await setConvoState(user.id, { step: 'ask_quote_items', draft })
+          await sendWhatsApp(from, t(lang, 'ask_quote_items'))
+          return true
+        }
+        await setConvoState(user.id, { step: 'ask_client_address', draft })
+        await sendWhatsApp(from, t(lang, 'ask_client_address'))
+        return true
+      }
+
+      const draft: Draft = { ...base, customer: text }
       await setConvoState(user.id, { step: 'ask_client_address', draft })
       await sendWhatsApp(from, t(lang, 'ask_client_address'))
       return true
@@ -372,8 +427,7 @@ export async function startGuidedQuote(user: ConvoUser): Promise<void> {
     return
   }
 
-  await setConvoState(user.id, { step: 'ask_client_name', draft })
-  await sendWhatsApp(user.whatsapp_number, t(lang, 'ask_client_name'))
+  await askForClient(user, lang, draft)
 }
 
 /** Asks whether an ambiguous message is a bill or a quote. */
