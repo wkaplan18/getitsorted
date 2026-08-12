@@ -89,11 +89,29 @@ export default function Home() {
         @media (max-width: 900px) {
           .hide-mobile { display: none !important; }
           .hero-grid { grid-template-columns: 1fr !important; }
-          .phone-col { display: none; }
           .steps-grid { grid-template-columns: 1fr !important; }
           .lanes-grid { grid-template-columns: 1fr !important; }
           .split-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
           .bills-grid { grid-template-columns: 1fr !important; }
+
+          /* The phone stays — it's the proof, and this audience is on a phone.
+             Centre it: right-aligned in a single-column hero leaves dead space
+             on tablet and pushes it off-centre on a handset. */
+          .phone-col { justify-content: center !important; }
+
+          /* The two cards floating outside the phone's bounds are positioned
+             with negative offsets, so below the breakpoint they hang off the
+             viewport and get clipped mid-figure. Hidden here — the full quote
+             document appears at its own size further down the page, so nothing
+             is actually lost. */
+          .hero-float { display: none !important; }
+        }
+
+        /* At handset widths the four proof chips each claim their own line and
+           push the phone a screenful down. Shrinking them lets two share a row
+           without touching the copy. */
+        @media (max-width: 480px) {
+          .hero-chips span { font-size: 11px !important; padding: 5px 10px !important; }
         }
       `}</style>
 
@@ -143,7 +161,7 @@ export default function Home() {
               </a>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div className="hero-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {['No app to download', 'English, isiZulu & Afrikaans', 'We make your logo', 'Your banking details on every quote'].map(t => (
                 <span key={t} style={{ fontSize: 12, background: 'rgba(255,255,255,0.75)', border: '1px solid #EFE2D0', color: '#6B6B60', padding: '6px 12px', borderRadius: 999 }}>{t}</span>
               ))}
@@ -179,7 +197,7 @@ export default function Home() {
               </div>
 
               {/* What comes out the other end. */}
-              <div style={{ position: 'absolute', right: -52, bottom: -30, background: '#fff', borderRadius: 16, padding: 18, boxShadow: '0 2px 4px rgba(15,23,42,0.06), 0 20px 44px -18px rgba(180,83,10,0.45)', border: '1px solid #F0E7DA', width: 226 }}>
+              <div className="hero-float" style={{ position: 'absolute', right: -52, bottom: -30, background: '#fff', borderRadius: 16, padding: 18, boxShadow: '0 2px 4px rgba(15,23,42,0.06), 0 20px 44px -18px rgba(180,83,10,0.45)', border: '1px solid #F0E7DA', width: 226 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ width: 30, height: 30, borderRadius: 7, background: '#1D5B4C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -202,7 +220,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div style={{ position: 'absolute', left: -36, top: 72, background: '#fff', borderRadius: 12, padding: '8px 12px', boxShadow: '0 2px 4px rgba(15,23,42,0.05), 0 12px 28px -14px rgba(15,23,42,0.4)', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 9 }}>
+              <div className="hero-float" style={{ position: 'absolute', left: -36, top: 72, background: '#fff', borderRadius: 12, padding: '8px 12px', boxShadow: '0 2px 4px rgba(15,23,42,0.05), 0 12px 28px -14px rgba(15,23,42,0.4)', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 9 }}>
                 <div style={{ width: 28, height: 28, background: '#FDF0E2', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13 }}>👀</div>
                 <div>
                   <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Mrs Naidoo opened it</p>
