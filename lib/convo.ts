@@ -311,7 +311,11 @@ export async function startLanguagePicker(user: ConvoUser, draft?: Draft): Promi
 export async function startGuidedQuote(user: ConvoUser): Promise<void> {
   const draft = emptyDraft()
 
-  if (!user.onboarded_at && !user.language) {
+  // onboarded_at, not language, is the signal for "has this person been set up".
+  // The migration gave users.language a default of 'en', which backfilled every
+  // pre-existing row — so language being set proves nothing about whether the
+  // user ever actually chose it.
+  if (!user.onboarded_at) {
     await startLanguagePicker(user, draft)
     return
   }

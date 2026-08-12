@@ -3,8 +3,15 @@
 
 const BASE = 'https://graph.facebook.com/v19.0'
 
-async function sendTemplate(to: string, name: string, params: string[]) {
-  const res = await fetch(`${BASE}/${process.env.META_PHONE_NUMBER_ID}/messages`, {
+// Meta stores "English (US)" as en_US and plain "English" as en, and a send
+// against the wrong one fails with 132001 "template does not exist" — the
+// template is there, just filed under the other code. Which one a template got
+// depends on what was picked in Template Manager, so try both rather than
+// making every future template depend on remembering that.
+const TEMPLATE_LANGS = ['en_US', 'en'] as const
+
+async function postTemplate(to: string, name: string, params: string[], code: string) {
+  return fetch(`${BASE}/${process.env.META_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.META_ACCESS_TOKEN}`,
@@ -16,7 +23,7 @@ async function sendTemplate(to: string, name: string, params: string[]) {
       type: 'template',
       template: {
         name,
-        language: { code: 'en_US' },
+        language: { code },
         components: [{
           type: 'body',
           parameters: params.map(text => ({ type: 'text', text })),
@@ -24,8 +31,25 @@ async function sendTemplate(to: string, name: string, params: string[]) {
       },
     }),
   })
-  if (!res.ok) throw new Error(`Meta API error ${res.status}: ${await res.text()}`)
-  return res.json()
+}
+
+async function sendTemplate(to: string, name: string, params: string[]) {
+  let lastError = ''
+
+  for (const code of TEMPLATE_LANGS) {
+    const res = await postTemplate(to, name, params, code)
+    if (res.ok) return res.json()
+
+    lastError = await res.text()
+    // Only a missing-translation error is worth retrying under the other code.
+    // A rejected template, a bad parameter count, or an expired token will fail
+    // identically both ways, and retrying just doubles the log noise.
+    const isWrongLanguage = lastError.includes('132001') || lastError.includes('does not exist')
+    if (!isWrongLanguage) break
+    console.warn(`[whatsapp] template "${name}" not found under ${code}, trying next`)
+  }
+
+  throw new Error(`Meta API error sending template "${name}": ${lastError}`)
 }
 
 async function sendMessage(to: string, body: string) {

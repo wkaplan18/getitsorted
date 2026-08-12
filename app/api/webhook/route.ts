@@ -149,9 +149,6 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
         return true
       }
       target = created as ConvoUser
-      // A row created just now carries the column default language 'en', which
-      // would skip the picker. Clear it so a brand-new user still gets to pick.
-      target = { ...target, language: null }
     }
     await startGuidedQuote(target)
     return true
@@ -408,7 +405,9 @@ async function processMessage(message: InboundMessage) {
       }
 
       if (looksLikeQuote || forcedQuote) {
-        if (isNewUser || !sender.language) {
+        // Same signal as startGuidedQuote: onboarded_at, not language, because
+        // the migration's 'en' default backfilled every pre-existing row.
+        if (!sender.onboarded_at) {
           // Pick a language first, carrying the draft so the job they just
           // described is waiting for them on the other side.
           await startLanguagePicker(sender, {
