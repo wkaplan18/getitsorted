@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
-import { extractBillFromText, extractBillFromPDF, extractBillFromImage, ExtractedBill } from '@/lib/claude'
+import { extractBillFromText, extractBillFromPDF, extractBillFromImage, ExtractedBill, QUOTE_CONFIDENCE_FLOOR } from '@/lib/claude'
 import { sendWhatsApp, sendWhatsAppTemplate, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation, formatReminderConfirmation } from '@/lib/whatsapp'
+import {
+  handleConvoStep, pendingDisambiguation, startLanguagePicker, startQuote, askBillOrQuote,
+  CONVO_USER_COLUMNS, type ConvoUser,
+} from '@/lib/convo'
+import { setConvoState } from '@/lib/quotes'
+import { t, toLang, fmtRand } from '@/lib/i18n'
 
 // One account this inbound message should be applied to. Normally there's exactly
 // one (the sender's own account, or the single account that trusts them) — but the
@@ -22,28 +28,36 @@ type InboundMessage = {
 const READ_FAIL_REPLY = "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date."
 const SAVE_FAIL_REPLY = "Something went wrong saving that on my side — it has NOT been added. Please try sending it again in a minute."
 
-const WELCOME_MESSAGE = `👋 Welcome to *Sorted* — I keep track of the bills and reminders you'd otherwise juggle in your head.
+const WELCOME_MESSAGE = `👋 Welcome to *Sorted* — I help you send quotes and get paid, and I keep track of the bills you owe.
 
 Just message me naturally:
-📄 Forward an invoice (PDF or photo)
+🧾 Price a job: "Quote for Mrs Naidoo, paint 3 bedrooms R850 each"
+📄 Forward an invoice you need to pay (PDF or photo)
 💬 Type a bill: "pay ballet R850 by Friday"
 📌 Or a nudge: "remind me to pay the vet on Monday"
 
-Everything lands on your dashboard with the banking details ready to copy:
+Everything lands on your dashboard:
 ${process.env.NEXT_PUBLIC_APP_URL}
 
-Text *LOGIN* any time to get a dashboard code, or *HELP* to see this again.`
+Text *LANGUAGE* to switch to isiZulu or Afrikaans, *LOGIN* for a dashboard code, or *HELP* to see this again.`
 
 const HELP_MESSAGE = `Here's what I can do:
 
+*Money in — getting paid*
+🧾 Send me a job: "Quote for Mrs Naidoo, paint 3 bedrooms R850 each, materials R1200"
+   I'll make a PDF quote with your logo and a payment link you can forward.
+
+*Money out — what you owe*
 📄 Forward an invoice (PDF or photo) — I'll pull out the amount, payee and banking details
 💬 Type a bill: "pay ballet R850 by Friday"
 📌 Set a reminder: "remind me to pay the vet Monday 2pm"
 🏦 Save bank details: "ballet banking details are FNB 98887765"
 
 Commands:
-*LOGIN* — get a dashboard login code
+*QUOTES* — your recent quotes
 *BILLS* — see what's still pending
+*LOGIN* — get a dashboard login code
+*LANGUAGE* — reply in English, isiZulu or Afrikaans
 *STOP* — stop sending to someone's dashboard (trusted senders)
 
 Dashboard: ${process.env.NEXT_PUBLIC_APP_URL}`
@@ -103,10 +117,56 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Handles LOGIN / HELP / BILLS / STOP keywords. Returns true if the message was a
-// command and has been fully dealt with.
-async function handleCommand(from: string, text: string): Promise<boolean> {
+// Handles LOGIN / HELP / BILLS / QUOTES / LANGUAGE / STOP keywords. Returns true
+// if the message was a command and has been fully dealt with.
+//
+// `user` is the sender's own account (null if they've never messaged before, or
+// if they're only a trusted sender on someone else's account). It's used for
+// reply language and for the quote commands, both of which are per-account.
+async function handleCommand(from: string, text: string, user: ConvoUser | null): Promise<boolean> {
   const cmd = text.trim().toLowerCase()
+  const lang = toLang(user?.language)
+
+  // "LANGUAGE" — re-opens the language picker. Deliberately recognised in all
+  // three languages plus the bare word, because a user who picked the wrong
+  // one can't necessarily read the menu that got them there.
+  if (cmd === 'language' || cmd === 'taal' || cmd === 'ulimi') {
+    if (user) {
+      await startLanguagePicker(user)
+    } else {
+      await sendWhatsApp(from, t('en', 'pick_language'))
+    }
+    return true
+  }
+
+  // "QUOTES" — the money-in counterpart to BILLS.
+  if (cmd === 'quotes' || cmd === 'kwotasies' || cmd === 'amaquote') {
+    if (!user) {
+      await sendWhatsApp(from, t(lang, 'quotes_none'))
+      return true
+    }
+    const { data: quotes } = await supabaseAdmin
+      .from('quotes')
+      .select('number, total, status, customers(name)')
+      .eq('user_id', user.id)
+      .neq('status', 'cancelled')
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (!quotes || quotes.length === 0) {
+      await sendWhatsApp(from, t(lang, 'quotes_none'))
+      return true
+    }
+    const lines = quotes.map(q => {
+      // Supabase renders a foreign-key join as an array, not an object.
+      const joined = q.customers as unknown
+      const customer = Array.isArray(joined) ? joined[0]?.name : (joined as { name?: string } | null)?.name
+      const who = customer ? ` — ${customer}` : ''
+      return `• ${q.number}${who} — ${fmtRand(Number(q.total))} (${q.status})`
+    })
+    await sendWhatsApp(from, `${t(lang, 'quotes_header')}\n\n${lines.join('\n')}`)
+    return true
+  }
 
   // "LOGIN" — generates and sends a dashboard OTP. WhatsApp only allows free-form
   // text replies to numbers that messaged us first, so the OTP has to be requested
@@ -137,7 +197,10 @@ async function handleCommand(from: string, text: string): Promise<boolean> {
   }
 
   if (cmd === 'help') {
-    await sendWhatsApp(from, HELP_MESSAGE)
+    // The English HELP_MESSAGE is kept for English users — it's more detailed
+    // than the translated string and covers forwarding PDFs and photos.
+    const help = lang === 'en' ? HELP_MESSAGE : `${t(lang, 'help')}\n\n${process.env.NEXT_PUBLIC_APP_URL}`
+    await sendWhatsApp(from, help)
     return true
   }
 
@@ -197,9 +260,39 @@ async function processMessage(message: InboundMessage) {
 
     const from: string = message.from  // e.g. "27821234567"
 
+    // The sender's own account, if they have one. Loaded up front because the
+    // reply language, any in-progress conversation, and the quote commands all
+    // hang off it. Null for a pure trusted sender who has never signed up.
+    const { data: senderRow } = await supabaseAdmin
+      .from('users')
+      .select(CONVO_USER_COLUMNS)
+      .eq('whatsapp_number', from)
+      .maybeSingle()
+    let sender = (senderRow as ConvoUser | null) ?? null
+    const senderLang = toLang(sender?.language)
+
     if (message.type === 'text' && message.text?.body) {
-      if (await handleCommand(from, message.text.body)) return
+      if (await handleCommand(from, message.text.body, sender)) return
     }
+
+    // A pending "bill or quote?" answer: replay the original message down the
+    // path the user chose instead of making them type it again.
+    let forcedQuote = false
+    let replayText: string | null = null
+    if (sender && message.type === 'text' && message.text?.body) {
+      const pending = pendingDisambiguation(sender, message.text.body)
+      if (pending) {
+        await setConvoState(sender.id, null)
+        sender = { ...sender, convo_state: null }
+        replayText = pending.message
+        forcedQuote = pending.asQuote
+      }
+    }
+
+    // Mid-conversation (language pick, onboarding, quote confirm/edit) takes
+    // priority over extraction — otherwise "1200" as an answer gets parsed as
+    // a bill. Skipped when replaying a disambiguation, which already cleared it.
+    if (sender && !replayText && (await handleConvoStep(sender, message))) return
 
     // Voice notes / video / stickers etc. — be upfront about what we can't read
     // instead of letting them fall through to a generic parse failure.
@@ -226,34 +319,29 @@ async function processMessage(message: InboundMessage) {
     if (trustedSenderRows && trustedSenderRows.length > 0) {
       targets = trustedSenderRows.map(row => ({ userId: row.user_id, sentBy: from, label: row.label }))
     } else {
-      const { data: existingUser } = await supabaseAdmin
-        .from('users')
-        .select('id')
-        .eq('whatsapp_number', from)
-        .maybeSingle()
-
-      let userId = existingUser?.id
-      if (!userId) {
+      if (!sender) {
         isNewUser = true
         const { data: created, error: userError } = await supabaseAdmin
           .from('users')
           .insert({ whatsapp_number: from })
-          .select('id')
+          .select(CONVO_USER_COLUMNS)
           .single()
         if (userError || !created) {
           console.error('User insert failed', userError)
           return
         }
-        userId = created.id
+        sender = created as ConvoUser
       }
-      targets = [{ userId, sentBy: null, label: null }]
+      targets = [{ userId: sender.id, sentBy: null, label: null }]
     }
 
     let extracted: ExtractedBill | null = null
     let rawContent = ''
 
     if (message.type === 'text') {
-      rawContent = message.text?.body ?? ''
+      // replayText is set when the user has just answered "bill or quote?" —
+      // the message being parsed is the original one, not their "1"/"2".
+      rawContent = replayText ?? message.text?.body ?? ''
       extracted = await extractBillFromText(rawContent)
 
     } else if (message.type === 'document' && message.document) {
@@ -279,15 +367,63 @@ async function processMessage(message: InboundMessage) {
       extracted = await extractBillFromImage(base64, mime as 'image/jpeg' | 'image/png' | 'image/webp', caption)
     }
 
+    // ---------------------------------------------------------------------
+    // MONEY IN — the user is quoting their own customer.
+    //
+    // Deliberately ahead of the payee check below: a quote has a customer, not
+    // a payee, and would otherwise be rejected as unparseable. Only ever runs
+    // on the sender's own account — a trusted sender forwarding a bill for
+    // someone else can't send quotes from that person's business.
+    // ---------------------------------------------------------------------
+    const ownAccount = sender && targets.length === 1 && targets[0].sentBy === null
+
+    if (extracted && ownAccount && sender) {
+      const looksLikeQuote = extracted.message_type === 'quote_request'
+      const uncertain = extracted.confidence < QUOTE_CONFIDENCE_FLOOR
+
+      // Ambiguous and the user has a business to quote from → ask rather than
+      // guess. Turning a supplier invoice into a customer quote (or the
+      // reverse) is the one mistake this product can't come back from.
+      if (uncertain && !replayText && sender.business_name && message.type === 'text') {
+        await askBillOrQuote(sender, rawContent)
+        return
+      }
+
+      if (looksLikeQuote || forcedQuote) {
+        if (isNewUser || !sender.language) {
+          // Pick a language first, carrying the draft so the job they just
+          // described is waiting for them on the other side.
+          await startLanguagePicker(sender, {
+            customer: extracted.customer,
+            customer_address: extracted.customer_address,
+            line_items: extracted.line_items,
+            raw_message: rawContent,
+          })
+          return
+        }
+        await startQuote(sender, extracted, rawContent)
+        return
+      }
+    }
+
     // A brand-new user gets the welcome whatever they sent — and if their first
     // message didn't parse, the welcome already explains how to use Sorted, so
     // skip the cold "couldn't read that" error on top of it.
+    //
+    // Note this deliberately does NOT return, and does NOT open the language
+    // picker: a new user forwarding an invoice must still have that invoice
+    // saved. The picker would swallow it. Money-out users reach the picker via
+    // the LANGUAGE command (mentioned in the welcome); money-in users get it
+    // automatically in the quote branch above, where the draft is carried
+    // through and nothing is lost.
     if (isNewUser) {
       await sendWhatsApp(from, WELCOME_MESSAGE)
     }
 
     if (!extracted?.payee) {
-      if (!isNewUser) await sendWhatsApp(from, READ_FAIL_REPLY)
+      if (!isNewUser) {
+        await sendWhatsApp(from, senderLang === 'en' ? READ_FAIL_REPLY : t(senderLang, 'not_understood'))
+      }
       return
     }
 

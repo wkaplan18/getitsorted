@@ -63,4 +63,20 @@ export type User = {
   whatsapp_number: string
   name: string | null
   created_at: string
+
+  // Money-in / business profile. All nullable — a household user who only
+  // tracks bills never fills any of this in, and must keep working without it.
+  language: 'en' | 'zu' | 'af' | null
+  business_name: string | null
+  trade: string | null
+  logo_url: string | null
+  vat_number: string | null
+  bank_name: string | null
+  account_number: string | null
+  branch_code: string | null
+  onboarded_at: string | null
+  quote_seq: number | null
+
+  // Position in a multi-step WhatsApp conversation. See ConvoState in lib/quotes.ts.
+  convo_state: unknown | null
 }

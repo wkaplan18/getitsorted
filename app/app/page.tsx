@@ -5,7 +5,31 @@ import confetti from 'canvas-confetti'
 import type { Bill, Reminder } from '@/lib/supabase'
 
 type View = 'login' | 'otp' | 'dashboard'
-type Tab = 'pending' | 'paid' | 'reminders' | 'senders'
+type Tab = 'pending' | 'paid' | 'quotes' | 'reminders' | 'senders'
+
+// Money-in side. Mirrors the shape /api/quotes returns.
+type QuoteRow = {
+  id: string
+  number: string
+  doc_type: 'quote' | 'invoice'
+  status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'paid' | 'cancelled'
+  total: number
+  public_token: string
+  created_at: string
+  paid_at: string | null
+  customer_name: string | null
+}
+
+type BusinessProfile = {
+  business_name: string | null
+  trade: string | null
+  logo_url: string | null
+  vat_number: string | null
+  bank_name: string | null
+  account_number: string | null
+  branch_code: string | null
+  language: string | null
+}
 
 // Session token issued by /api/auth — sent as a Bearer header on every API call.
 // Lives in localStorage when "Keep me logged in" was ticked (survives closing the
@@ -54,6 +78,9 @@ export default function Home() {
   const [otp, setOtp] = useState('')
   const [bills, setBills] = useState<Bill[]>([])
   const [reminders, setReminders] = useState<Reminder[]>([])
+  const [quotes, setQuotes] = useState<QuoteRow[]>([])
+  const [profile, setProfile] = useState<BusinessProfile | null>(null)
+  const [savingProfile, setSavingProfile] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<Tab>('pending')
@@ -123,11 +150,12 @@ export default function Home() {
 
   async function fetchAll(p: string) {
     setView('dashboard')
-    const [billsRes, sendersRes, remindersRes, authRes] = await Promise.all([
+    const [billsRes, sendersRes, remindersRes, authRes, quotesRes] = await Promise.all([
       fetch(`/api/bills?phone=${p}`, { headers: authHeaders() }),
       fetch(`/api/trusted-senders?phone=${p}`, { headers: authHeaders() }),
       fetch(`/api/reminder-notes?phone=${p}`, { headers: authHeaders() }),
       fetch('/api/auth', { headers: authHeaders() }),
+      fetch('/api/quotes', { headers: authHeaders() }),
     ])
     // Expired or missing session — back to login
     if (billsRes.status === 401) { logout(); return }
@@ -139,6 +167,25 @@ export default function Home() {
     setSenders(sendersData.senders || [])
     setReminders(remindersData.reminders || [])
     setMyName(authData.name || '')
+
+    // Quotes are additive — if the migration hasn't run yet this 500s, and the
+    // bills dashboard must still load. Never let the new half break the old one.
+    if (quotesRes.ok) {
+      const quotesData = await quotesRes.json()
+      setQuotes(quotesData.quotes || [])
+      setProfile(quotesData.profile || null)
+    }
+  }
+
+  async function saveProfile(updates: Partial<BusinessProfile>) {
+    setSavingProfile(true)
+    await fetch('/api/quotes', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(updates),
+    })
+    setProfile(p => (p ? { ...p, ...updates } : p))
+    setSavingProfile(false)
   }
 
   async function saveName() {
@@ -287,6 +334,9 @@ export default function Home() {
   const incomplete = pending.filter(b => !b.account_number)
   const totalDue = pending.reduce((s, b) => s + b.amount, 0)
   const activeReminders = reminders.filter(r => !r.dismissed)
+  // "Unpaid" for the tab badge means money still owed to him — cancelled quotes
+  // and drafts aren't chaseable, so they don't belong in the count.
+  const unpaidQuotes = quotes.filter(q => q.status !== 'paid' && q.status !== 'cancelled' && q.status !== 'draft')
   const doneReminders = reminders.filter(r => r.dismissed)
 
   if (view === 'login') return (
@@ -395,17 +445,20 @@ export default function Home() {
 
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)', borderLeft: '3px solid #22c55e' }}>
+          {/* The value's own colour carries the status here — a coloured left
+              border would be a second encoding of the same fact. Depth comes
+              from a layered shadow tinted with the card's hue instead. */}
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 8px 20px -12px rgba(34,197,94,0.35)' }}>
             <p className="text-xs text-gray-600 mb-1 font-medium">Total Due</p>
             <p className="text-xl font-bold" style={{ color: '#16a34a', letterSpacing: '-0.02em' }}>R{totalDue.toFixed(0)}</p>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)', borderLeft: '3px solid #f59e0b' }}>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 8px 20px -12px rgba(245,158,11,0.35)' }}>
             <p className="text-xs text-gray-600 mb-1 font-medium">Pending</p>
             <p className="text-xl font-bold" style={{ color: '#d97706', letterSpacing: '-0.02em' }}>{pending.length}</p>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)', borderLeft: `3px solid ${incomplete.length > 0 ? '#f59e0b' : '#e5e7eb'}` }}>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: incomplete.length > 0 ? '0 1px 2px rgba(0,0,0,0.04), 0 8px 20px -12px rgba(245,158,11,0.35)' : '0 1px 2px rgba(0,0,0,0.04)' }}>
             <p className="text-xs text-gray-600 mb-1 font-medium">Needs Info</p>
-            <p className="text-xl font-bold" style={{ color: incomplete.length > 0 ? '#d97706' : '#d1d5db', letterSpacing: '-0.02em' }}>{incomplete.length}</p>
+            <p className="text-xl font-bold" style={{ color: incomplete.length > 0 ? '#d97706' : '#9ca3af', letterSpacing: '-0.02em' }}>{incomplete.length}</p>
           </div>
         </div>
 
@@ -431,7 +484,7 @@ export default function Home() {
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-2xl p-1 mb-5" style={{ background: 'rgba(0,0,0,0.05)' }}>
-          {(['pending', 'paid', 'reminders', 'senders'] as Tab[]).map(t => (
+          {(['pending', 'paid', 'quotes', 'reminders', 'senders'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => { setTab(t); setConfirmClearDone(false) }}
@@ -442,6 +495,7 @@ export default function Home() {
             >
               {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#16a34a' }}>{pending.length}</span>}</>}
               {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#e5e7eb', color: '#6b7280' }}>{paid.length}</span>}</>}
+              {t === 'quotes' && <>Quotes {unpaidQuotes.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#fdecd9', color: '#b4530a' }}>{unpaidQuotes.length}</span>}</>}
               {t === 'reminders' && <>Reminders {activeReminders.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#fef3c7', color: '#b45309' }}>{activeReminders.length}</span>}</>}
               {t === 'senders' && 'Senders'}
             </button>
@@ -473,6 +527,27 @@ export default function Home() {
                 onEdit={edits => saveBillEdits(bill.id, edits)}
               />
             ))}
+          </div>
+        )}
+
+        {/* Quotes & invoices — the money-in side */}
+        {tab === 'quotes' && (
+          <div className="space-y-3">
+            <BusinessProfileCard profile={profile} saving={savingProfile} onSave={saveProfile} />
+
+            {quotes.length === 0 && (
+              <div className="text-center py-16 text-gray-400">
+                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fdecd9, #fdf6ec)' }}>
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v11a2 2 0 01-2 2z" stroke="#b4530a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+                <p className="text-sm font-semibold text-gray-500">No quotes yet</p>
+                <p className="text-xs mt-1">
+                  WhatsApp a job to Sorted — e.g. &ldquo;Quote for Mrs Naidoo, paint 3 bedrooms R850 each&rdquo;
+                </p>
+              </div>
+            )}
+
+            {quotes.map(q => <QuoteCard key={q.id} quote={q} />)}
           </div>
         )}
 
@@ -615,7 +690,7 @@ export default function Home() {
                     </a>
                     <button
                       onClick={() => removeSender(s.whatsapp_number)}
-                      className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50"
+                      className="text-gray-500 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
                     >
                       <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </button>
@@ -724,24 +799,26 @@ function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, 
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   })
 
-  const borderColor = isPaid ? '#d1fae5' : isOverdue ? '#fca5a5' : isUnconfirmed ? '#93c5fd' : isIncomplete ? '#fcd34d' : '#a7f3d0'
+  // Status is already carried three ways on this card — the pill badge, the
+  // tinted background, and the tinted shadow. The 4px coloured left border was
+  // a fourth encoding of the same fact; dropping it loses no information.
+  const borderColor = isPaid ? '#d1fae5' : isOverdue ? '#fca5a5' : isUnconfirmed ? '#bfdbfe' : isIncomplete ? '#fde68a' : '#e5e7eb'
   const cardBg = isPaid ? 'rgba(240,253,244,0.6)' : isOverdue ? 'rgba(254,242,242,0.8)' : isUnconfirmed ? 'rgba(239,246,255,0.8)' : isIncomplete ? 'rgba(255,251,235,0.8)' : '#ffffff'
 
   return (
-    <div className="rounded-2xl p-4 border-l-4 transition-all"
+    <div className="rounded-2xl p-4"
       style={{
         background: cardBg,
-        borderLeft: `4px solid ${borderColor}`,
-        border: `1px solid ${isPaid ? '#d1fae5' : isUnconfirmed ? '#bfdbfe' : isIncomplete ? '#fde68a' : '#e5e7eb'}`,
-        borderLeftWidth: '4px',
-        borderLeftColor: borderColor,
+        border: `1px solid ${borderColor}`,
         boxShadow: isPaid
-          ? '0 2px 12px rgba(16,185,129,0.06)'
+          ? '0 1px 2px rgba(0,0,0,0.03), 0 8px 20px -14px rgba(16,185,129,0.4)'
+          : isOverdue
+          ? '0 1px 2px rgba(0,0,0,0.03), 0 8px 20px -14px rgba(239,68,68,0.45)'
           : isUnconfirmed
-          ? '0 2px 12px rgba(59,130,246,0.1)'
+          ? '0 1px 2px rgba(0,0,0,0.03), 0 8px 20px -14px rgba(59,130,246,0.45)'
           : isIncomplete
-          ? '0 2px 12px rgba(245,158,11,0.1)'
-          : '0 2px 16px rgba(34,197,94,0.07)',
+          ? '0 1px 2px rgba(0,0,0,0.03), 0 8px 20px -14px rgba(245,158,11,0.45)'
+          : '0 1px 2px rgba(0,0,0,0.03), 0 8px 20px -14px rgba(34,197,94,0.4)',
       }}>
 
       <div className="flex items-start justify-between mb-3">
@@ -790,14 +867,14 @@ function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, 
                 <button
                   onClick={() => setShowEditForm(v => !v)}
                   aria-label="Edit bill"
-                  className="text-gray-300 hover:text-cyan-600 transition-colors p-1 rounded-lg hover:bg-cyan-50"
+                  className="text-gray-500 hover:text-cyan-700 transition-colors p-1 rounded-lg hover:bg-cyan-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-700"
                 >
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
               )}
               <button
                 onClick={() => setConfirmDelete(true)}
-                className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50"
+                className="text-gray-500 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
               >
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
@@ -968,13 +1045,13 @@ function ReminderCard({ reminder, senderLabel, onDismiss, onDelete }: { reminder
   })
 
   return (
-    <div className="rounded-2xl p-4 border-l-4 transition-all"
+    <div className="rounded-2xl p-4"
       style={{
         background: reminder.dismissed ? 'rgba(240,253,244,0.6)' : '#fffbeb',
-        borderLeftWidth: '4px',
-        borderLeftColor: reminder.dismissed ? '#d1fae5' : '#fcd34d',
         border: `1px solid ${reminder.dismissed ? '#d1fae5' : '#fde68a'}`,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+        boxShadow: reminder.dismissed
+          ? '0 1px 2px rgba(0,0,0,0.03)'
+          : '0 1px 2px rgba(0,0,0,0.03), 0 8px 20px -14px rgba(245,158,11,0.45)',
         opacity: reminder.dismissed ? 0.75 : 1,
       }}>
       <div className="flex items-start gap-3">
@@ -1012,7 +1089,7 @@ function ReminderCard({ reminder, senderLabel, onDismiss, onDelete }: { reminder
                 <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-400 px-1">✕</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50 flex-shrink-0">
+              <button onClick={() => setConfirmDelete(true)} className="text-gray-500 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50 flex-shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             )}
@@ -1042,6 +1119,182 @@ function DetailRow({ label, value, onCopy, copied }: { label: string; value: str
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Money-in cards
+// ---------------------------------------------------------------------------
+
+const QUOTE_STATUS: Record<QuoteRow['status'], { label: string; bg: string; fg: string }> = {
+  draft:     { label: 'Draft',     bg: '#f3f4f6', fg: '#6b7280' },
+  sent:      { label: 'Sent',      bg: '#fdecd9', fg: '#b4530a' },
+  viewed:    { label: 'Opened',    bg: '#e0f2fe', fg: '#0369a1' },
+  accepted:  { label: 'Accepted',  bg: '#dcfce7', fg: '#16a34a' },
+  paid:      { label: 'Paid',      bg: '#dcfce7', fg: '#16a34a' },
+  cancelled: { label: 'Cancelled', bg: '#f3f4f6', fg: '#9ca3af' },
+}
+
+function QuoteCard({ quote }: { quote: QuoteRow }) {
+  const status = QUOTE_STATUS[quote.status] ?? QUOTE_STATUS.sent
+  const created = new Date(quote.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-12px_rgba(180,83,10,0.25)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-gray-900 truncate">
+            {quote.customer_name ?? 'No customer name'}
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {quote.number} · {created}
+          </p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="font-semibold text-gray-900 tabular-nums">
+            R{Number(quote.total).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+          <span
+            className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium"
+            style={{ background: status.bg, color: status.fg }}
+          >
+            {status.label}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+        <a
+          href={`/q/${quote.public_token}`}
+          target="_blank"
+          rel="noreferrer"
+          className="flex-1 text-center text-xs font-semibold py-2 rounded-xl text-[#b4530a] bg-[#fdf6ec] transition-transform duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b4530a]"
+        >
+          View
+        </a>
+        <a
+          href={`/api/quotes/${quote.public_token}/pdf`}
+          target="_blank"
+          rel="noreferrer"
+          className="flex-1 text-center text-xs font-semibold py-2 rounded-xl text-gray-600 bg-gray-100 transition-transform duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
+        >
+          PDF
+        </a>
+      </div>
+    </div>
+  )
+}
+
+// The details that appear on every quote and PDF. Collapsed by default — the
+// tradesperson sets this up once during WhatsApp onboarding and rarely returns.
+function BusinessProfileCard({
+  profile, saving, onSave,
+}: {
+  profile: BusinessProfile | null
+  saving: boolean
+  onSave: (updates: Partial<BusinessProfile>) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<Partial<BusinessProfile>>({})
+
+  if (!profile) return null
+
+  const value = (field: keyof BusinessProfile) =>
+    (draft[field] ?? profile[field] ?? '') as string
+
+  const set = (field: keyof BusinessProfile) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setDraft(d => ({ ...d, [field]: e.target.value }))
+
+  const FIELDS: Array<{ key: keyof BusinessProfile; label: string; mode?: string }> = [
+    { key: 'business_name',  label: 'Business name' },
+    { key: 'trade',          label: 'What work you do' },
+    { key: 'bank_name',      label: 'Bank' },
+    { key: 'account_number', label: 'Account number', mode: 'numeric' },
+    { key: 'branch_code',    label: 'Branch code', mode: 'numeric' },
+    { key: 'vat_number',     label: 'VAT number (only if registered)' },
+  ]
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b4530a] rounded-lg"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          {profile.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profile.logo_url} alt="" className="w-10 h-10 rounded-lg object-contain flex-shrink-0" />
+          ) : (
+            <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: '#fdecd9' }}>
+              <span className="text-sm font-bold" style={{ color: '#b4530a' }}>
+                {(profile.business_name ?? '?').charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 truncate">
+              {profile.business_name ?? 'Set up your business'}
+            </p>
+            <p className="text-xs text-gray-500 truncate">
+              {profile.business_name ? 'Shown on every quote you send' : 'Needed before you can send a quote'}
+            </p>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-[#b4530a] flex-shrink-0 ml-2">
+          {open ? 'Close' : 'Edit'}
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+          {FIELDS.map(field => (
+            <div key={field.key}>
+              <label htmlFor={`bp-${field.key}`} className="block text-xs font-semibold text-gray-600 mb-1">
+                {field.label}
+              </label>
+              <input
+                id={`bp-${field.key}`}
+                type="text"
+                inputMode={field.mode as 'numeric' | undefined}
+                value={value(field.key)}
+                onChange={set(field.key)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-gray-900 focus-visible:border-[#b4530a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#b4530a]/30"
+              />
+            </div>
+          ))}
+
+          <div>
+            <p className="block text-xs font-semibold text-gray-600 mb-1">Sorted replies to you in</p>
+            <div className="flex gap-2">
+              {([['en', 'English'], ['zu', 'isiZulu'], ['af', 'Afrikaans']] as const).map(([code, name]) => {
+                const active = (draft.language ?? profile.language ?? 'en') === code
+                return (
+                  <button
+                    key={code}
+                    onClick={() => setDraft(d => ({ ...d, language: code }))}
+                    className="flex-1 text-xs font-semibold py-2 rounded-xl transition-transform duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b4530a]"
+                    style={active
+                      ? { background: '#b4530a', color: '#fff' }
+                      : { background: '#f3f4f6', color: '#6b7280' }}
+                  >
+                    {name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <button
+            onClick={() => { onSave(draft); setDraft({}); setOpen(false) }}
+            disabled={saving || Object.keys(draft).length === 0}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-transform duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b4530a]"
+            style={{ background: '#b4530a' }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
