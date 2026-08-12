@@ -216,9 +216,14 @@ export function renderDraft(draft: Draft, lang: Lang, vatRegistered: boolean): s
 
   lines.push('')
   for (const item of items) {
+    // A single-quantity line would otherwise print the same figure twice
+    // ("Materials — R1,200.00 = R1,200.00"), which reads like a mistake.
+    if (item.quantity === 1) {
+      lines.push(`• ${item.description} — ${fmtRand(lineTotal(item))}`)
+      continue
+    }
     const qty = Number.isInteger(item.quantity) ? String(item.quantity) : item.quantity.toFixed(2)
-    const prefix = item.quantity === 1 ? '' : `${qty} x `
-    lines.push(`• ${item.description} — ${prefix}${fmtRand(item.unit_price)} = ${fmtRand(lineTotal(item))}`)
+    lines.push(`• ${item.description} — ${qty} x ${fmtRand(item.unit_price)} = ${fmtRand(lineTotal(item))}`)
   }
 
   lines.push('')
