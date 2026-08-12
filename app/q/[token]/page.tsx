@@ -227,8 +227,12 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
           ) : null}
 
           <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E0D9] px-6 py-4 sm:px-8">
+            {/* `download` plus the route's attachment disposition — an inline
+                PDF renders as a blank page in WhatsApp's in-app browser and
+                several mobile browsers, which have no viewer to hand it to. */}
             <a
               href={`/api/quotes/${quote.public_token}/pdf`}
+              download={`${quote.number}.pdf`}
               className="text-sm font-medium text-[#B4530A] underline underline-offset-2 transition-opacity duration-150 hover:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B4530A]"
             >
               Download PDF

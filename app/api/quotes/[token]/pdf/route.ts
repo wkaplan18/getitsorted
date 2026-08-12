@@ -13,7 +13,7 @@ import { QuotePDF } from '@/lib/pdf/QuotePDF'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
   const view = await loadQuoteByToken(token)
@@ -21,7 +21,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
 
   const { quote, items, business, customer } = view
 
-  const buffer = await renderToBuffer(
+  // ?inline=1 renders in the browser's viewer; the default downloads. Mobile
+  // browsers and WhatsApp's in-app browser frequently show an inline PDF as a
+  // blank white page because they have no viewer to hand it to, so a link
+  // labelled "Download PDF" must actually download.
+  const inline = new URL(req.url).searchParams.get('inline') === '1'
+
+  let buffer: Buffer
+  try {
+    buffer = await renderToBuffer(
     QuotePDF({
       number: quote.number,
       docType: quote.doc_type,
@@ -52,14 +60,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
         line_total: Number(item.line_total),
       })),
     }),
-  )
+    )
+  } catch (err) {
+    // Previously this threw into a blank response with no trace of why. A
+    // remote logo that won't load is the most likely cause, so name it.
+    console.error(`[pdf] render failed for ${quote.number} (logo: ${business.logo_url ?? 'none'}):`, err)
+    return NextResponse.json({ error: 'could not build the PDF' }, { status: 500 })
+  }
+
+  const disposition = inline ? 'inline' : 'attachment'
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      // inline so WhatsApp's in-app browser previews it instead of forcing a
-      // download the user then has to hunt for in a full Downloads folder.
-      'Content-Disposition': `inline; filename="${quote.number}.pdf"`,
+      'Content-Disposition': `${disposition}; filename="${quote.number}.pdf"`,
+      'Content-Length': String(buffer.length),
       'Cache-Control': 'private, max-age=0, must-revalidate',
     },
   })
