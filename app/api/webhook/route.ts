@@ -26,7 +26,7 @@ type InboundMessage = {
   image?: { id: string; caption?: string }
 }
 
-const READ_FAIL_REPLY = "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date."
+const READ_FAIL_REPLY = "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date.\n\nStuck? Reply MENU to start again."
 const SAVE_FAIL_REPLY = "Something went wrong saving that on my side — it has NOT been added. Please try sending it again in a minute."
 
 const WELCOME_MESSAGE = `👋 Welcome to *Sorted* — I help you send professional quotes and get paid.

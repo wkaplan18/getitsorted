@@ -95,6 +95,7 @@ export type StringKey =
   | 'quotes_header'
   // menu
   | 'menu'
+  | 'menu_dropped'
   | 'invoice_none'
   | 'invoice_pick'
   | 'invoice_sent'
@@ -161,7 +162,7 @@ const en: Strings = {
   fwd_total: 'Total',
   fwd_open: 'View it or download the PDF here:',
   quote_cancelled: 'Quote cancelled, nothing sent.',
-  quote_no_items: "I couldn't find any prices in that. Tell me what you're charging, like \"paint 3 rooms R850 each\".",
+  quote_no_items: "I couldn't find any prices in that. Tell me what you're charging, like \"paint 3 rooms R850 each\".\n\nStuck? Reply MENU to start again.",
   quote_needs_profile: "I need your business name first before I can make a quote.",
 
   quote_viewed: '👀 {customer} opened {number}.',
@@ -183,6 +184,7 @@ const en: Strings = {
   menu:
     'What would you like to do?\n\n1  New quote\n2  Turn a quote into an invoice\n3  My recent quotes\n4  Send a new logo\n5  My business details\n6  My banking details\n7  A client\'s details\n8  Bills I need to pay\n9  Dashboard login code\n10  Change language\n\nReply with a number.',
   menu_invalid: "That's not one of the options. Reply with a number from 1 to 10.",
+  menu_dropped: "Right — I've dropped what we were doing.",
   invoice_none: "You haven't made any quotes yet — an invoice is made from one.",
   invoice_pick: 'Which quote should I invoice?\n\n{list}\n\nReply with a number.',
   invoice_sent: '{number} is ready 👇 — same figures as {source}, now as an invoice.\n\nForward the message below to {customer}.',
@@ -200,7 +202,7 @@ const en: Strings = {
     'Here\'s what I can do:\n\n• MENU — everything, as a numbered list\n• Send me a job → I make a quote\n• Send me a bill → I track it and remind you\n• QUOTES — your recent quotes\n• BILLS — what you owe\n• LOGIN — get your dashboard code\n• LANGUAGE — change language\n• STOP — pause messages',
   not_understood: "I didn't quite get that. Reply MENU to see what I can do.",
   save_failed: "Something went wrong saving that. Please send it again.",
-  cancelled: 'Cancelled.',
+  cancelled: 'Cancelled. Reply MENU to see everything I can do.',
 }
 
 const zu: Strings = {
@@ -251,7 +253,7 @@ const zu: Strings = {
   fwd_total: 'Isamba',
   fwd_open: 'Yibuke noma ulande i-PDF lapha:',
   quote_cancelled: 'I-quote ikhanseliwe, akuthunyelwanga lutho.',
-  quote_no_items: 'Angitholanga zintengo lapho. Ngitshele ukuthi ubiza malini, njenge "penda amakamelo ama-3 R850 ngalinye".',
+  quote_no_items: 'Angitholanga zintengo lapho. Ngitshele ukuthi ubiza malini, njenge "penda amakamelo ama-3 R850 ngalinye".\n\nUbambekile? Phendula ngo-MENU uqale kabusha.',
   quote_needs_profile: 'Ngidinga igama lebhizinisi lakho kuqala ngaphambi kokwenza i-quote.',
 
   quote_viewed: '👀 U-{customer} uyivulile i-{number}.',
@@ -273,6 +275,7 @@ const zu: Strings = {
   menu:
     'Ufuna ukwenzani?\n\n1  I-quote entsha\n2  Guqula i-quote ibe yi-invoice\n3  Ama-quote ami akamuva\n4  Thumela ilogo entsha\n5  Imininingwane yebhizinisi lami\n6  Imininingwane yebhange lami\n7  Imininingwane yekhasimende\n8  Amabhili okumele ngiwakhokhe\n9  Ikhodi yokungena ku-dashboard\n10  Shintsha ulimi\n\nPhendula ngenombolo.',
   menu_invalid: 'Leyo ayikho kulezi zinketho. Phendula ngenombolo kusukela ku-1 kuya ku-10.',
+  menu_dropped: 'Kulungile — ngikuyekile ebesikwenza.',
   invoice_none: 'Awukakenzi ama-quote — i-invoice yenziwa nge-quote.',
   invoice_pick: 'Iyiphi i-quote ofuna ngiyenze i-invoice?\n\n{list}\n\nPhendula ngenombolo.',
   invoice_sent: 'I-{number} isilungile 👇 — amanani afanayo ne-{source}, manje kuyi-invoice.\n\nDlulisela umlayezo ongezansi ku-{customer}.',
@@ -290,7 +293,7 @@ const zu: Strings = {
     'Nakhu engingakwenza:\n\n• MENU — konke, ohlwini olunezinombolo\n• Ngithumele umsebenzi → ngenza i-quote\n• Ngithumele ibhili → ngiyaligcina ngikukhumbuze\n• QUOTES — ama-quote akho akamuva\n• BILLS — okumele ukukhokhe\n• LOGIN — thola ikhodi ye-dashboard\n• LANGUAGE — shintsha ulimi\n• STOP — misa imiyalezo',
   not_understood: 'Angizwanga kahle. Phendula ngo-MENU ubone engingakwenza.',
   save_failed: 'Kube nenkinga ekugcineni lokho. Sicela ukuthumele futhi.',
-  cancelled: 'Kukhanseliwe.',
+  cancelled: 'Kukhanseliwe. Phendula ngo-MENU ubone konke engingakwenza.',
 }
 
 const af: Strings = {
@@ -341,7 +344,7 @@ const af: Strings = {
   fwd_total: 'Totaal',
   fwd_open: 'Sien dit of laai die PDF hier af:',
   quote_cancelled: 'Kwotasie gekanselleer, niks gestuur nie.',
-  quote_no_items: 'Ek kon geen pryse daarin kry nie. Sê my wat jy vra, soos "verf 3 kamers R850 elk".',
+  quote_no_items: 'Ek kon geen pryse daarin kry nie. Sê my wat jy vra, soos "verf 3 kamers R850 elk".\n\nVasgevang? Antwoord MENU om weer te begin.',
   quote_needs_profile: 'Ek kort eers jou besigheidsnaam voor ek \'n kwotasie kan maak.',
 
   quote_viewed: '👀 {customer} het {number} oopgemaak.',
@@ -363,6 +366,7 @@ const af: Strings = {
   menu:
     'Wat wil jy doen?\n\n1  Nuwe kwotasie\n2  Maak \'n faktuur van \'n kwotasie\n3  My onlangse kwotasies\n4  Stuur \'n nuwe logo\n5  My besigheidsbesonderhede\n6  My bankbesonderhede\n7  \'n Kliënt se besonderhede\n8  Rekeninge wat ek moet betaal\n9  Dashboard-inteikenkode\n10  Verander taal\n\nAntwoord met \'n nommer.',
   menu_invalid: 'Dit is nie een van die opsies nie. Antwoord met \'n nommer van 1 tot 10.',
+  menu_dropped: 'Reg — ek het laat vaar waarmee ons besig was.',
   invoice_none: 'Jy het nog geen kwotasies nie — \'n faktuur word van een gemaak.',
   invoice_pick: 'Watter kwotasie moet ek faktureer?\n\n{list}\n\nAntwoord met \'n nommer.',
   invoice_sent: '{number} is gereed 👇 — dieselfde bedrae as {source}, nou as \'n faktuur.\n\nStuur die boodskap hieronder aan vir {customer}.',
@@ -380,7 +384,7 @@ const af: Strings = {
     'Dis wat ek kan doen:\n\n• MENU — alles, as \'n genommerde lys\n• Stuur my \'n werk → ek maak \'n kwotasie\n• Stuur my \'n rekening → ek hou dit by en herinner jou\n• QUOTES — jou onlangse kwotasies\n• BILLS — wat jy skuld\n• LOGIN — kry jou dashboard-kode\n• LANGUAGE — verander taal\n• STOP — stop boodskappe',
   not_understood: 'Ek het dit nie heeltemal verstaan nie. Antwoord MENU om te sien wat ek kan doen.',
   save_failed: 'Iets het verkeerd geloop met stoor. Stuur dit asseblief weer.',
-  cancelled: 'Gekanselleer.',
+  cancelled: 'Gekanselleer. Antwoord MENU om te sien wat ek alles kan doen.',
 }
 
 const STRINGS: Record<Lang, Strings> = { en, zu, af }

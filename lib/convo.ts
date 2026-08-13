@@ -610,8 +610,19 @@ export function pendingDisambiguation(
  */
 export async function showMenu(user: ConvoUser): Promise<void> {
   const lang = toLang(user.language)
+
+  // MENU is the escape hatch from anywhere — it is handled before the
+  // conversation steps, so it works mid-quote, mid-onboarding, anywhere. It
+  // always did, but silently: a half-finished quote disappeared with no
+  // acknowledgement. Say so, so the user knows the slate is clean.
+  const interrupted = readState(user)
+  const dropped = interrupted && interrupted.step !== 'menu'
+
   await setConvoState(user.id, { step: 'menu' })
-  await sendWhatsApp(user.whatsapp_number, t(lang, 'menu'))
+  await sendWhatsApp(
+    user.whatsapp_number,
+    dropped ? `${t(lang, 'menu_dropped')}\n\n${t(lang, 'menu')}` : t(lang, 'menu'),
+  )
 }
 
 /**
