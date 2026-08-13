@@ -26,10 +26,10 @@ export async function GET(req: NextRequest) {
   const [{ data: quotes }, { data: profile }] = await Promise.all([
     supabaseAdmin
       .from('quotes')
-      .select('id, number, doc_type, status, total, public_token, created_at, paid_at, customers(name)')
+      .select('id, number, doc_type, status, subtotal, vat_amount, total, public_token, created_at, sent_at, viewed_at, paid_at, notes, customers(name, address)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(100),
+      .limit(200),
     supabaseAdmin
       .from('users')
       .select('business_name, trade, logo_url, vat_number, bank_name, account_number, branch_code, language')
@@ -37,13 +37,37 @@ export async function GET(req: NextRequest) {
       .maybeSingle(),
   ])
 
+  // The line items for every quote in one round trip rather than one query per
+  // card — the dashboard shows a full record, and 200 sequential fetches on a
+  // prepaid phone connection is not a record anyone waits for.
+  const ids = (quotes ?? []).map(q => q.id)
+  const { data: allItems } = ids.length
+    ? await supabaseAdmin
+        .from('quote_items')
+        .select('quote_id, description, quantity, unit_price, line_total, position')
+        .in('quote_id', ids)
+        .order('position')
+    : { data: [] }
+
+  const itemsByQuote = new Map<string, Array<Record<string, unknown>>>()
+  for (const item of allItems ?? []) {
+    const list = itemsByQuote.get(item.quote_id) ?? []
+    list.push(item)
+    itemsByQuote.set(item.quote_id, list)
+  }
+
   const rows = (quotes ?? []).map(q => {
     // A Supabase FK join comes back as an array, not an object.
     const joined = q.customers as unknown
-    const name = Array.isArray(joined)
-      ? (joined[0] as { name?: string } | undefined)?.name
-      : (joined as { name?: string } | null)?.name
-    return { ...q, customers: undefined, customer_name: name ?? null }
+    const customer = (Array.isArray(joined) ? joined[0] : joined) as
+      { name?: string; address?: string | null } | null | undefined
+    return {
+      ...q,
+      customers: undefined,
+      customer_name: customer?.name ?? null,
+      customer_address: customer?.address ?? null,
+      items: itemsByQuote.get(q.id) ?? [],
+    }
   })
 
   return NextResponse.json({ quotes: rows, profile: profile ?? null })

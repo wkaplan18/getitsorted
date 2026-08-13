@@ -5,7 +5,21 @@ import confetti from 'canvas-confetti'
 import type { Bill, Reminder } from '@/lib/supabase'
 
 type View = 'login' | 'otp' | 'dashboard'
-type Tab = 'pending' | 'paid' | 'quotes' | 'reminders' | 'senders'
+
+// The two halves of the product, kept apart on purpose: money in (what you've
+// quoted and invoiced) and money out (what you owe). They answer different
+// questions and were previously interleaved in one row of five tabs.
+type Section = 'quotes' | 'bills'
+type BillTab = 'pending' | 'paid' | 'reminders' | 'senders'
+/** Which documents the quotes list is showing. */
+type QuoteFilter = 'all' | 'quote' | 'invoice' | 'unpaid' | 'paid'
+
+type QuoteItemRow = {
+  description: string
+  quantity: number
+  unit_price: number
+  line_total: number
+}
 
 // Money-in side. Mirrors the shape /api/quotes returns.
 type QuoteRow = {
@@ -13,11 +27,18 @@ type QuoteRow = {
   number: string
   doc_type: 'quote' | 'invoice'
   status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'paid' | 'cancelled'
+  subtotal: number
+  vat_amount: number
   total: number
   public_token: string
   created_at: string
+  sent_at: string | null
+  viewed_at: string | null
   paid_at: string | null
+  notes: string | null
   customer_name: string | null
+  customer_address: string | null
+  items: QuoteItemRow[]
 }
 
 type BusinessProfile = {
@@ -83,7 +104,11 @@ export default function Home() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<Tab>('pending')
+  // Quotes first: this is a quoting product that also tracks bills, and the
+  // first thing on screen should be what the user came to make money with.
+  const [section, setSection] = useState<Section>('quotes')
+  const [tab, setTab] = useState<BillTab>('pending')
+  const [quoteFilter, setQuoteFilter] = useState<QuoteFilter>('all')
   const [senders, setSenders] = useState<TrustedSender[]>([])
   const [myName, setMyName] = useState('')
   const [savingName, setSavingName] = useState(false)
@@ -334,9 +359,6 @@ export default function Home() {
   const incomplete = pending.filter(b => !b.account_number)
   const totalDue = pending.reduce((s, b) => s + b.amount, 0)
   const activeReminders = reminders.filter(r => !r.dismissed)
-  // "Unpaid" for the tab badge means money still owed to him — cancelled quotes
-  // and drafts aren't chaseable, so they don't belong in the count.
-  const unpaidQuotes = quotes.filter(q => q.status !== 'paid' && q.status !== 'cancelled' && q.status !== 'draft')
   const doneReminders = reminders.filter(r => r.dismissed)
 
   if (view === 'login') return (
@@ -443,6 +465,40 @@ export default function Home() {
 
       <div className="max-w-2xl mx-auto px-4 pt-6 pb-12">
 
+        {/* The two halves of the product. A single switch at the top rather
+            than five interleaved tabs: money in and money out answer different
+            questions, and mixing them made every screen half-irrelevant. */}
+        <div className="flex gap-1 rounded-2xl p-1 mb-5" style={{ background: 'rgba(0,0,0,0.05)' }}>
+          {([
+            ['quotes', 'Quotes & invoices', '#b4530a'],
+            ['bills', 'Bills I owe', '#16a34a'],
+          ] as const).map(([key, label, accent]) => (
+            <button
+              key={key}
+              onClick={() => { setSection(key); setConfirmClearDone(false) }}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+              style={section === key
+                ? { background: '#fff', color: accent, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderBottom: `2px solid ${accent}` }
+                : { color: '#6b7280', background: 'transparent' }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {section === 'quotes' && (
+          <QuotesSection
+            quotes={quotes}
+            profile={profile}
+            savingProfile={savingProfile}
+            onSaveProfile={saveProfile}
+            filter={quoteFilter}
+            onFilter={setQuoteFilter}
+          />
+        )}
+
+        {section === 'bills' && (<>
+
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-3 mb-5">
           {/* The value's own colour carries the status here — a coloured left
@@ -484,7 +540,7 @@ export default function Home() {
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-2xl p-1 mb-5" style={{ background: 'rgba(0,0,0,0.05)' }}>
-          {(['pending', 'paid', 'quotes', 'reminders', 'senders'] as Tab[]).map(t => (
+          {(['pending', 'paid', 'reminders', 'senders'] as BillTab[]).map(t => (
             <button
               key={t}
               onClick={() => { setTab(t); setConfirmClearDone(false) }}
@@ -495,7 +551,6 @@ export default function Home() {
             >
               {t === 'pending' && <>Pending {pending.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#16a34a' }}>{pending.length}</span>}</>}
               {t === 'paid' && <>Paid {paid.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#e5e7eb', color: '#6b7280' }}>{paid.length}</span>}</>}
-              {t === 'quotes' && <>Quotes {unpaidQuotes.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#fdecd9', color: '#b4530a' }}>{unpaidQuotes.length}</span>}</>}
               {t === 'reminders' && <>Reminders {activeReminders.length > 0 && <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#fef3c7', color: '#b45309' }}>{activeReminders.length}</span>}</>}
               {t === 'senders' && 'Senders'}
             </button>
@@ -527,27 +582,6 @@ export default function Home() {
                 onEdit={edits => saveBillEdits(bill.id, edits)}
               />
             ))}
-          </div>
-        )}
-
-        {/* Quotes & invoices — the money-in side */}
-        {tab === 'quotes' && (
-          <div className="space-y-3">
-            <BusinessProfileCard profile={profile} saving={savingProfile} onSave={saveProfile} />
-
-            {quotes.length === 0 && (
-              <div className="text-center py-16 text-gray-400">
-                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fdecd9, #fdf6ec)' }}>
-                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v11a2 2 0 01-2 2z" stroke="#b4530a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </div>
-                <p className="text-sm font-semibold text-gray-500">No quotes yet</p>
-                <p className="text-xs mt-1">
-                  WhatsApp a job to Sorted — e.g. &ldquo;Quote for Mrs Naidoo, paint 3 bedrooms R850 each&rdquo;
-                </p>
-              </div>
-            )}
-
-            {quotes.map(q => <QuoteCard key={q.id} quote={q} />)}
           </div>
         )}
 
@@ -700,6 +734,8 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        </>)}
       </div>
     </div>
   )
@@ -1136,25 +1172,189 @@ const QUOTE_STATUS: Record<QuoteRow['status'], { label: string; bg: string; fg: 
   cancelled: { label: 'Cancelled', bg: '#f3f4f6', fg: '#9ca3af' },
 }
 
+const rand = (n: number) =>
+  'R' + Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** Cancelled documents are excluded from every total — nobody was ever going to pay them. */
+const counts = (q: QuoteRow) => q.status !== 'cancelled' && q.status !== 'draft'
+
+/**
+ * The money-in half: a record of every quote and invoice, with the totals that
+ * turn a list of documents into an answer to "what have I made?".
+ *
+ * Read-only by design. Quotes are made on WhatsApp, on site, on a phone — this
+ * is where the tradesperson comes afterwards to look at what he sent, what was
+ * opened and what actually got paid.
+ */
+function QuotesSection({
+  quotes, profile, savingProfile, onSaveProfile, filter, onFilter,
+}: {
+  quotes: QuoteRow[]
+  profile: BusinessProfile | null
+  savingProfile: boolean
+  onSaveProfile: (updates: Partial<BusinessProfile>) => void
+  filter: QuoteFilter
+  onFilter: (f: QuoteFilter) => void
+}) {
+  const live = quotes.filter(counts)
+  const paidDocs = live.filter(q => q.status === 'paid')
+  const owedDocs = live.filter(q => q.status !== 'paid')
+
+  const paidTotal = paidDocs.reduce((sum, q) => sum + Number(q.total), 0)
+  const owedTotal = owedDocs.reduce((sum, q) => sum + Number(q.total), 0)
+
+  // "This month" counts what was sent this month, not what was paid — it is the
+  // answer to "how much work did I put out", which is the number a tradesperson
+  // actually tracks.
+  const now = new Date()
+  const thisMonthTotal = live
+    .filter(q => {
+      const d = new Date(q.created_at)
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    })
+    .reduce((sum, q) => sum + Number(q.total), 0)
+
+  const shown = quotes.filter(q => {
+    switch (filter) {
+      case 'quote':   return q.doc_type === 'quote'
+      case 'invoice': return q.doc_type === 'invoice'
+      case 'unpaid':  return counts(q) && q.status !== 'paid'
+      case 'paid':    return q.status === 'paid'
+      default:        return true
+    }
+  })
+
+  // Grouped by month so the record reads as a history rather than a flat feed,
+  // and so each month carries its own subtotal.
+  const months: Array<{ key: string; label: string; rows: QuoteRow[]; total: number }> = []
+  for (const q of shown) {
+    const d = new Date(q.created_at)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    let group = months.find(m => m.key === key)
+    if (!group) {
+      group = {
+        key,
+        label: d.toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' }),
+        rows: [],
+        total: 0,
+      }
+      months.push(group)
+    }
+    group.rows.push(q)
+    if (counts(q)) group.total += Number(q.total)
+  }
+
+  const FILTERS: Array<[QuoteFilter, string]> = [
+    ['all', 'All'],
+    ['quote', 'Quotes'],
+    ['invoice', 'Invoices'],
+    ['unpaid', 'Unpaid'],
+    ['paid', 'Paid'],
+  ]
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 8px 20px -12px rgba(22,163,74,0.35)' }}>
+          <p className="text-xs text-gray-600 mb-1 font-medium">Paid to you</p>
+          <p className="text-lg font-bold tabular-nums" style={{ color: '#16a34a', letterSpacing: '-0.02em' }}>{rand(paidTotal)}</p>
+        </div>
+        <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 8px 20px -12px rgba(180,83,10,0.35)' }}>
+          <p className="text-xs text-gray-600 mb-1 font-medium">Still owed</p>
+          <p className="text-lg font-bold tabular-nums" style={{ color: '#b4530a', letterSpacing: '-0.02em' }}>{rand(owedTotal)}</p>
+        </div>
+        <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+          <p className="text-xs text-gray-600 mb-1 font-medium">Sent this month</p>
+          <p className="text-lg font-bold tabular-nums" style={{ color: '#0f172a', letterSpacing: '-0.02em' }}>{rand(thisMonthTotal)}</p>
+        </div>
+      </div>
+
+      <BusinessProfileCard profile={profile} saving={savingProfile} onSave={onSaveProfile} />
+
+      {quotes.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #fdecd9, #fdf6ec)' }}>
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v11a2 2 0 01-2 2z" stroke="#b4530a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <p className="text-sm font-semibold text-gray-500">No quotes yet</p>
+          <p className="text-xs mt-1">
+            WhatsApp a job to Sorted — e.g. &ldquo;Quote for Mrs Naidoo, paint 3 bedrooms R850 each&rdquo;
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {FILTERS.map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => onFilter(key)}
+                className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-transform duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b4530a]"
+                style={filter === key
+                  ? { background: '#b4530a', color: '#fff' }
+                  : { background: '#fff', color: '#6b7280', border: '1px solid #e5e7eb' }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {shown.length === 0 && (
+            <p className="text-center text-gray-400 text-sm py-10">Nothing under that filter.</p>
+          )}
+
+          {months.map(month => (
+            <div key={month.key} className="space-y-3">
+              <div className="flex items-baseline justify-between px-1 pt-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{month.label}</p>
+                <p className="text-xs font-semibold tabular-nums text-gray-500">{rand(month.total)}</p>
+              </div>
+              {month.rows.map(q => <QuoteCard key={q.id} quote={q} />)}
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
 function QuoteCard({ quote }: { quote: QuoteRow }) {
+  const [open, setOpen] = useState(false)
   const status = QUOTE_STATUS[quote.status] ?? QUOTE_STATUS.sent
-  const created = new Date(quote.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+  const isInvoice = quote.doc_type === 'invoice'
+  const created = new Date(quote.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+
+  const stamp = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : null
+
+  // The document's own history, in the order it happened.
+  const timeline: Array<[string, string]> = []
+  if (stamp(quote.sent_at)) timeline.push(['Sent', stamp(quote.sent_at)!])
+  if (stamp(quote.viewed_at)) timeline.push(['Opened by client', stamp(quote.viewed_at)!])
+  if (stamp(quote.paid_at)) timeline.push(['Paid', stamp(quote.paid_at)!])
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-12px_rgba(180,83,10,0.25)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-semibold text-gray-900 truncate">
-            {quote.customer_name ?? 'No customer name'}
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <div className="flex items-center gap-2">
+            <span
+              className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+              style={isInvoice
+                ? { background: '#1f2937', color: '#fff' }
+                : { background: '#fdecd9', color: '#b4530a' }}
+            >
+              {isInvoice ? 'Invoice' : 'Quote'}
+            </span>
+            <p className="font-semibold text-gray-900 truncate">
+              {quote.customer_name ?? 'No customer name'}
+            </p>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
             {quote.number} · {created}
           </p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="font-semibold text-gray-900 tabular-nums">
-            R{Number(quote.total).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
+          <p className="font-semibold text-gray-900 tabular-nums">{rand(quote.total)}</p>
           <span
             className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium"
             style={{ background: status.bg, color: status.fg }}
@@ -1164,7 +1364,55 @@ function QuoteCard({ quote }: { quote: QuoteRow }) {
         </div>
       </div>
 
+      {open && (
+        <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+          {quote.customer_address && (
+            <p className="text-xs text-gray-500">{quote.customer_address}</p>
+          )}
+
+          <div className="space-y-1.5">
+            {quote.items.map((item, i) => (
+              <div key={i} className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="text-gray-700 min-w-0">
+                  {item.description}
+                  {Number(item.quantity) !== 1 && (
+                    <span className="text-gray-400"> · {Number(item.quantity)} × {rand(item.unit_price)}</span>
+                  )}
+                </span>
+                <span className="text-gray-900 tabular-nums flex-shrink-0">{rand(item.line_total)}</span>
+              </div>
+            ))}
+          </div>
+
+          {Number(quote.vat_amount) > 0 && (
+            <div className="pt-2 border-t border-gray-100 space-y-1 text-xs text-gray-500">
+              <div className="flex justify-between"><span>Subtotal</span><span className="tabular-nums">{rand(quote.subtotal)}</span></div>
+              <div className="flex justify-between"><span>VAT (15%)</span><span className="tabular-nums">{rand(quote.vat_amount)}</span></div>
+            </div>
+          )}
+
+          {timeline.length > 0 && (
+            <div className="pt-2 border-t border-gray-100 space-y-1">
+              {timeline.map(([label, when]) => (
+                <div key={label} className="flex justify-between text-xs">
+                  <span className="text-gray-400">{label}</span>
+                  <span className="text-gray-600">{when}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {quote.notes && <p className="text-xs text-gray-500 italic">{quote.notes}</p>}
+        </div>
+      )}
+
       <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex-1 text-center text-xs font-semibold py-2 rounded-xl text-gray-600 bg-gray-100 transition-transform duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
+        >
+          {open ? 'Hide' : 'Details'}
+        </button>
         <a
           href={`/q/${quote.public_token}`}
           target="_blank"
