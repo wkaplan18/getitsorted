@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const [{ data: quotes }, { data: profile }] = await Promise.all([
     supabaseAdmin
       .from('quotes')
-      .select('id, number, doc_type, status, subtotal, vat_amount, total, public_token, created_at, sent_at, viewed_at, paid_at, notes, customers(name, address)')
+      .select('id, number, doc_type, status, subtotal, vat_amount, total, public_token, paystack_reference, created_at, sent_at, viewed_at, paid_at, notes, customers(name, address)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(200),

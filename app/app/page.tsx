@@ -35,6 +35,7 @@ type QuoteRow = {
   sent_at: string | null
   viewed_at: string | null
   paid_at: string | null
+  paystack_reference: string | null
   notes: string | null
   customer_name: string | null
   customer_address: string | null
@@ -281,6 +282,26 @@ export default function Home() {
     setBills(prev => prev.map(b => b.id === id ? { ...b, status: 'paid', paid_at: now } : b))
   }
 
+  /**
+   * A quote or invoice settled outside Paystack — an EFT into the account on
+   * the PDF, or cash on the day. Updated locally as well as on the server so
+   * the totals move under the user's thumb instead of after a round trip.
+   */
+  async function markQuotePaid(token: string, paid: boolean) {
+    const res = await fetch(`/api/quotes/${token}/paid`, {
+      method: paid ? 'POST' : 'DELETE',
+      headers: authHeaders(),
+    })
+    if (!res.ok) return
+    const now = new Date().toISOString()
+    setQuotes(prev => prev.map(q => {
+      if (q.public_token !== token) return q
+      return paid
+        ? { ...q, status: 'paid', paid_at: now }
+        : { ...q, status: q.viewed_at ? 'viewed' : 'sent', paid_at: null }
+    }))
+  }
+
   async function markUnpaid(id: string) {
     await fetch('/api/bills', {
       method: 'PATCH',
@@ -494,6 +515,7 @@ export default function Home() {
             onSaveProfile={saveProfile}
             filter={quoteFilter}
             onFilter={setQuoteFilter}
+            onPaid={markQuotePaid}
           />
         )}
 
@@ -1187,7 +1209,7 @@ const counts = (q: QuoteRow) => q.status !== 'cancelled' && q.status !== 'draft'
  * opened and what actually got paid.
  */
 function QuotesSection({
-  quotes, profile, savingProfile, onSaveProfile, filter, onFilter,
+  quotes, profile, savingProfile, onSaveProfile, filter, onFilter, onPaid,
 }: {
   quotes: QuoteRow[]
   profile: BusinessProfile | null
@@ -1195,6 +1217,7 @@ function QuotesSection({
   onSaveProfile: (updates: Partial<BusinessProfile>) => void
   filter: QuoteFilter
   onFilter: (f: QuoteFilter) => void
+  onPaid: (token: string, paid: boolean) => void
 }) {
   const live = quotes.filter(counts)
   const paidDocs = live.filter(q => q.status === 'paid')
@@ -1308,7 +1331,9 @@ function QuotesSection({
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{month.label}</p>
                 <p className="text-xs font-semibold tabular-nums text-gray-500">{rand(month.total)}</p>
               </div>
-              {month.rows.map(q => <QuoteCard key={q.id} quote={q} />)}
+              {month.rows.map(q => (
+                <QuoteCard key={q.id} quote={q} onPaid={paid => onPaid(q.public_token, paid)} />
+              ))}
             </div>
           ))}
         </>
@@ -1317,10 +1342,13 @@ function QuotesSection({
   )
 }
 
-function QuoteCard({ quote }: { quote: QuoteRow }) {
+function QuoteCard({ quote, onPaid }: { quote: QuoteRow; onPaid: (paid: boolean) => void }) {
   const [open, setOpen] = useState(false)
   const status = QUOTE_STATUS[quote.status] ?? QUOTE_STATUS.sent
   const isInvoice = quote.doc_type === 'invoice'
+  const isPaid = quote.status === 'paid'
+  // Card payments aren't ours to un-say — the money actually moved.
+  const byCard = isPaid && Boolean(quote.paystack_reference)
   const created = new Date(quote.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 
   const stamp = (iso: string | null) =>
@@ -1405,6 +1433,34 @@ function QuoteCard({ quote }: { quote: QuoteRow }) {
           {quote.notes && <p className="text-xs text-gray-500 italic">{quote.notes}</p>}
         </div>
       )}
+
+      {/* Settling up. Paystack marks its own quotes paid, so this only appears
+          where nothing else will ever say so: an EFT into the account on the
+          PDF, or cash on the day. */}
+      {isPaid ? (
+        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-gray-100">
+          <p className="text-xs text-gray-500">
+            {byCard ? 'Paid by card' : 'Marked paid'}
+            {stamp(quote.paid_at) ? ` · ${stamp(quote.paid_at)}` : ''}
+          </p>
+          {!byCard && (
+            <button
+              onClick={() => onPaid(false)}
+              className="text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
+            >
+              Undo
+            </button>
+          )}
+        </div>
+      ) : quote.status !== 'cancelled' && quote.status !== 'draft' ? (
+        <button
+          onClick={() => onPaid(true)}
+          className="w-full mt-3 py-2.5 rounded-xl text-xs font-semibold text-white transition-transform duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16a34a]"
+          style={{ background: '#16a34a', boxShadow: '0 1px 2px rgba(15,23,42,0.08), 0 8px 18px -10px rgba(22,163,74,0.6)' }}
+        >
+          Mark as paid
+        </button>
+      ) : null}
 
       <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
         <button
