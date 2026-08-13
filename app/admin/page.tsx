@@ -6,6 +6,7 @@ type UserRow = {
   id: string
   whatsapp_number: string
   name: string | null
+  profile_name: string | null
   business_name: string | null
   trade: string | null
   has_logo: boolean
@@ -295,9 +296,16 @@ export default function AdminPage() {
                       <span className="inline-block mr-1 text-gray-400 transition-transform" style={{ transform: expandedUserId === u.id ? 'rotate(90deg)' : 'none' }}>
                         ›
                       </span>
-                      <span className="font-medium">{u.business_name || u.name || 'Not set up yet'}</span>
+                      <span className="font-medium">
+                        {u.business_name || u.profile_name || u.name || 'Not set up yet'}
+                      </span>
                       <span className="block ml-4 text-xs text-gray-400">
-                        {[u.trade, u.name && u.business_name ? u.name : null].filter(Boolean).join(' · ') || '—'}
+                        {[
+                          u.trade,
+                          // The name they gave us, then the one on their phone —
+                          // shown only when it isn't already the heading.
+                          u.business_name ? (u.name || u.profile_name) : (u.name && u.name !== u.profile_name ? u.name : null),
+                        ].filter(Boolean).join(' · ') || '—'}
                         {u.vat_registered ? ' · VAT' : ''}
                         {u.has_logo ? ' · logo' : ''}
                       </span>

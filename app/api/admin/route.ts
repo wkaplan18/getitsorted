@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     supabaseAdmin
       .from('users')
-      .select('id, whatsapp_number, name, business_name, trade, logo_url, vat_number, language, onboarded_at, created_at')
+      .select('id, whatsapp_number, name, whatsapp_profile_name, business_name, trade, logo_url, vat_number, language, onboarded_at, created_at')
       .order('created_at', { ascending: false }),
     supabaseAdmin.from('bills').select('user_id, status, created_at'),
     supabaseAdmin.from('quotes').select('user_id, doc_type, status, total, created_at'),
@@ -107,6 +107,8 @@ export async function GET(req: NextRequest) {
     id: u.id,
     whatsapp_number: u.whatsapp_number,
     name: u.name,
+    // What their phone says they're called, captured from inbound messages.
+    profile_name: u.whatsapp_profile_name ?? null,
     business_name: u.business_name,
     trade: u.trade,
     has_logo: Boolean(u.logo_url),

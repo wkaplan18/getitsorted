@@ -101,9 +101,14 @@ export async function POST(req: NextRequest) {
 
     if (!message) return NextResponse.json({ status: 'ignored' })
 
+    // The sender's WhatsApp display name, which Meta includes on every inbound
+    // message and nowhere else — there is no endpoint to look a name up from a
+    // number. If it isn't taken here it is gone.
+    const profileName: string | null = change?.contacts?.[0]?.profile?.name ?? null
+
     // Return 200 immediately so Meta doesn't retry and create duplicates
     // Process the message in the background after the response is sent
-    after(() => processMessage(message))
+    after(() => processMessage(message, profileName))
     return NextResponse.json({ status: 'ok' })
 
   } catch (err) {
@@ -112,8 +117,27 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * Stores the sender's WhatsApp display name against their number.
+ *
+ * Never touches users.name — that is what they typed when asked "and your
+ * name?", and it is theirs. This is only what their phone says about them, and
+ * it exists so the admin list shows a person rather than a bare number.
+ *
+ * Failure is swallowed on purpose: if the profile_name migration hasn't been
+ * run, every inbound message must still work. (See the bills.unconfirmed
+ * incident — a missing column silently broke every save for a day.)
+ */
+async function rememberProfileName(from: string, profileName: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({ whatsapp_profile_name: profileName })
+    .eq('whatsapp_number', from)
+  if (error) console.warn('[webhook] profile name not stored:', error.message)
+}
+
 /** Creates the account for a number we've never heard from. Null if the insert failed. */
-async function createUser(from: string): Promise<ConvoUser | null> {
+async function createUser(from: string, profileName?: string | null): Promise<ConvoUser | null> {
   const { data, error } = await supabaseAdmin
     .from('users')
     .insert({ whatsapp_number: from })
@@ -123,6 +147,9 @@ async function createUser(from: string): Promise<ConvoUser | null> {
     console.error('User insert failed', error)
     return null
   }
+  // Second write rather than part of the insert: a missing column would fail
+  // the whole insert and lose the user, not just their display name.
+  if (profileName) await rememberProfileName(from, profileName)
   return data as ConvoUser
 }
 
@@ -229,7 +256,7 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
   return false
 }
 
-async function processMessage(message: InboundMessage) {
+async function processMessage(message: InboundMessage, profileName: string | null = null) {
   try {
     // Deduplicate: ignore if we've already processed this message ID (Meta retries
     // webhooks that don't get a fast 200). A message can produce rows in either
@@ -252,6 +279,10 @@ async function processMessage(message: InboundMessage) {
       .maybeSingle()
     let sender = (senderRow as ConvoUser | null) ?? null
     const senderLang = toLang(sender?.language)
+
+    // Kept fresh on every message: people rename themselves, and this is the
+    // only place the name is ever available.
+    if (sender && profileName) await rememberProfileName(from, profileName)
 
     if (message.type === 'text' && message.text?.body) {
       if (await handleCommand(from, message.text.body, sender)) return
@@ -318,7 +349,7 @@ async function processMessage(message: InboundMessage) {
     } else {
       if (!sender) {
         isNewUser = true
-        const created = await createUser(from)
+        const created = await createUser(from, profileName)
         if (!created) return
         sender = created
       }
