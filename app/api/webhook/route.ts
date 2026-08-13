@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { extractBillFromText, extractBillFromPDF, extractBillFromImage, ExtractedBill, QUOTE_CONFIDENCE_FLOOR } from '@/lib/claude'
 import { sendWhatsApp, sendWhatsAppTemplate, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation, formatReminderConfirmation } from '@/lib/whatsapp'
 import {
-  handleConvoStep, pendingDisambiguation, startLanguagePicker, startGuidedQuote, startQuote, askBillOrQuote,
+  handleConvoStep, pendingDisambiguation, awaitingDisambiguation, startLanguagePicker, startGuidedQuote, startQuote, askBillOrQuote,
   showMenu, startInvoice, CONVO_USER_COLUMNS, type ConvoUser,
 } from '@/lib/convo'
 import { setConvoState } from '@/lib/quotes'
@@ -261,13 +261,28 @@ async function processMessage(message: InboundMessage) {
     // path the user chose instead of making them type it again.
     let forcedQuote = false
     let replayText: string | null = null
+    // Set when this message arrived while the question was open. Whatever
+    // happens next, the question is not asked again — a user who can't answer
+    // it in the shape we expect must never be asked it a third time.
+    let justDisambiguated = false
+
     if (sender && message.type === 'text' && message.text?.body) {
+      const wasAsked = awaitingDisambiguation(sender)
       const pending = pendingDisambiguation(sender, message.text.body)
+
       if (pending) {
         await setConvoState(sender.id, null)
         sender = { ...sender, convo_state: null }
         replayText = pending.message
         forcedQuote = pending.asQuote
+        justDisambiguated = true
+      } else if (wasAsked) {
+        // They replied with something we couldn't read as an answer — very
+        // often by simply retyping the job. Drop the question and treat this
+        // message as a fresh one, rather than blocking on an answer.
+        await setConvoState(sender.id, null)
+        sender = { ...sender, convo_state: null }
+        justDisambiguated = true
       }
     }
 
@@ -359,7 +374,11 @@ async function processMessage(message: InboundMessage) {
       // Ambiguous and the user has a business to quote from → ask rather than
       // guess. Turning a supplier invoice into a customer quote (or the
       // reverse) is the one mistake this product can't come back from.
-      if (uncertain && !replayText && sender.business_name && message.type === 'text') {
+      //
+      // Asked at most once, ever, for any one exchange: `justDisambiguated`
+      // covers both the answered case and the unreadable-answer case, so the
+      // question can never be re-asked in response to its own answer.
+      if (uncertain && !justDisambiguated && sender.business_name && message.type === 'text') {
         await askBillOrQuote(sender, rawContent)
         return
       }

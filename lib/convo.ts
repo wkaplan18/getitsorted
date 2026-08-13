@@ -547,20 +547,38 @@ export async function handleConvoStep(
     }
 
     case 'disambiguate': {
-      // A valid "1"/"2" is intercepted by the webhook before this runs (it needs
-      // to re-extract the stored message), so anything reaching here is invalid.
-      await sendWhatsApp(from, t(lang, 'ask_bill_or_quote'))
-      return true
+      // Both outcomes are handled by the webhook before this runs: a recognised
+      // answer replays the original message, and an unrecognised one drops the
+      // question entirely rather than asking it again. Re-asking here is what
+      // used to trap people in a loop with no way out.
+      await setConvoState(user.id, null)
+      return false
     }
   }
 
   return false
 }
 
+/** True while the user is sitting on the "bill or quote?" question. */
+export function awaitingDisambiguation(user: ConvoUser): boolean {
+  return readState(user)?.step === 'disambiguate'
+}
+
+// People answer a numbered question in words at least as often as with the
+// number — "im sending it to a customer" is a perfectly good answer and used to
+// be treated as gibberish.
+const MEANS_BILL = /\b(1|one|bill|pay|paying|owe|khokha|ibhili|betaal|rekening)\b/
+const MEANS_QUOTE = /\b(2|two|quote|quoting|send|sending|customer|client|kwotasie|stuur|kliënt|klient|thumela|ikhasimende)\b/
+
 /**
  * If the user is being asked "bill or quote?" and just answered, returns the
  * original message plus which way to treat it. The webhook replays that message
  * down the chosen path so the user never types it twice.
+ *
+ * Answers are read loosely on purpose: this question is a dead end for anyone
+ * whose reply isn't understood, so "2.", "TWO" and "I'm sending it to a client"
+ * all have to land. Anything still unrecognised is handled by the caller, which
+ * drops the question rather than asking it again.
  */
 export function pendingDisambiguation(
   user: ConvoUser,
@@ -568,9 +586,15 @@ export function pendingDisambiguation(
 ): { message: string; asQuote: boolean } | null {
   const state = readState(user)
   if (state?.step !== 'disambiguate' || !state.pending_message) return null
-  const choice = text.trim().toLowerCase()
-  if (choice !== '1' && choice !== '2') return null
-  return { message: state.pending_message, asQuote: choice === '2' }
+
+  const answer = text.trim().toLowerCase().replace(/[.,)\]!]+$/, '')
+  const bill = MEANS_BILL.test(answer)
+  const quote = MEANS_QUOTE.test(answer)
+
+  // "1 or 2?" — a reply hitting both sides answers nothing.
+  if (bill === quote) return null
+
+  return { message: state.pending_message, asQuote: quote }
 }
 
 // ---------------------------------------------------------------------------
