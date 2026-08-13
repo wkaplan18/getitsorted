@@ -67,8 +67,8 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
 
         <article className="overflow-hidden rounded-2xl border border-[#E2E0D9] bg-white shadow-[0_1px_2px_rgba(26,26,23,0.04),0_12px_28px_-12px_rgba(180,83,10,0.18)]">
 
-          <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[#E2E0D9] px-6 py-6 sm:px-8">
-            <div className="flex items-start gap-3">
+          <header className="flex flex-col gap-4 border-b border-[#E2E0D9] px-6 py-6 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:px-8">
+            <div className="flex min-w-0 items-start gap-3">
               {business.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -103,12 +103,18 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
               </div>
             </div>
 
-            <div className="text-right">
-              <p className="text-2xl font-semibold tracking-[-0.02em] text-[#B4530A]">
+            {/* Mobile: a full-width strip under the business block, number and
+                date on one line. Right-aligning a shrink-to-fit block here left
+                the number and date floating mid-card. */}
+            <div className="shrink-0 border-t border-[#E2E0D9] pt-4 sm:border-0 sm:pt-0 sm:text-right">
+              <p className="text-xl font-semibold tracking-[-0.02em] text-[#B4530A] sm:text-2xl">
                 {isInvoice ? 'Invoice' : 'Quotation'}
               </p>
-              <p className="mt-1 text-sm font-medium text-[#1A1A17]">{quote.number}</p>
-              <p className="text-sm text-[#6B6B60]">{fmtDate(quote.created_at)}</p>
+              <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-sm sm:mt-1 sm:block">
+                <span className="font-medium text-[#1A1A17]">{quote.number}</span>
+                <span aria-hidden="true" className="text-[#B0AEA3] sm:hidden">·</span>
+                <span className="text-[#6B6B60]">{fmtDate(quote.created_at)}</span>
+              </p>
             </div>
           </header>
 
@@ -131,7 +137,11 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
           ) : null}
 
           <section className="px-6 py-5 sm:px-8">
-            <ul className="divide-y divide-[#E2E0D9]">
+            <div className="flex items-baseline justify-between gap-4 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#B4530A]">
+              <span>Description</span>
+              <span>Amount</span>
+            </div>
+            <ul className="divide-y divide-[#E2E0D9] border-t border-[#E2E0D9]">
               {items.map(item => (
                 <li key={item.id} className="flex items-baseline justify-between gap-4 py-3">
                   <div className="min-w-0">
