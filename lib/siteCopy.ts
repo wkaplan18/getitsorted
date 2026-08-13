@@ -18,6 +18,8 @@ export type SiteLang = (typeof SITE_LANGS)[number]
 /** Path each language lives at. English is the root. */
 export const LANG_PATH: Record<SiteLang, string> = { en: '/', zu: '/zu' }
 export const LANG_LABEL: Record<SiteLang, string> = { en: 'English', zu: 'isiZulu' }
+/** Two-letter form for the nav toggle, where there's no room for the full name. */
+export const LANG_SHORT: Record<SiteLang, string> = { en: 'EN', zu: 'ZU' }
 
 export type SiteCopy = {
   htmlLang: string

@@ -22,7 +22,7 @@
 // FORM: Extension of an established surface. No concept tournament run.
 
 import Link from 'next/link'
-import { siteCopy, LANG_PATH, LANG_LABEL, SITE_LANGS, type SiteLang, type SiteCopy } from '@/lib/siteCopy'
+import { siteCopy, LANG_PATH, LANG_LABEL, LANG_SHORT, SITE_LANGS, type SiteLang, type SiteCopy } from '@/lib/siteCopy'
 
 const WA_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').replace(/\D/g, '')
 
@@ -117,12 +117,18 @@ export default function Landing({ lang }: { lang: SiteLang }) {
            without touching the copy. */
         @media (max-width: 480px) {
           .hero-chips span { font-size: 11px !important; padding: 5px 10px !important; }
+          /* Logo + language toggle + CTA is three things in a 360px row —
+             claw back the horizontal padding rather than dropping any of them. */
+          .nav-inner { padding: 0 16px !important; }
+          .nav-cta { padding: 9px 14px !important; font-size: 13px !important; }
         }
+
+        .lang-pill:focus-visible { outline: 2px solid #B4530A; outline-offset: 2px; }
       `}</style>
 
       {/* NAV */}
       <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #f1f5f9' }}>
-        <div style={{ maxWidth: 1152, margin: '0 auto', padding: '0 32px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="nav-inner" style={{ maxWidth: 1152, margin: '0 auto', padding: '0 32px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
             <SortedMark size={34} />
             <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 20, color: '#0f172a', letterSpacing: '-0.03em' }}>Sorted</span>
@@ -132,9 +138,12 @@ export default function Landing({ lang }: { lang: SiteLang }) {
             <a href="#bills" className="nav-link">{t.nav.bills}</a>
             <a href="#who" className="nav-link">{t.nav.who}</a>
           </div>
-          <Link href="/app" className="btn" style={{ background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 600, padding: '10px 20px', borderRadius: 12, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            {t.nav.openApp}
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <LangToggle lang={lang} />
+            <Link href="/app" className="btn nav-cta" style={{ background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 600, padding: '10px 20px', borderRadius: 12, fontFamily: "'Plus Jakarta Sans', sans-serif", whiteSpace: 'nowrap' }}>
+              {t.nav.openApp}
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -444,6 +453,48 @@ export default function Landing({ lang }: { lang: SiteLang }) {
 }
 
 /* ── pieces ───────────────────────────────────────────────────────────── */
+
+/**
+ * Language toggle, in the nav rather than only the footer.
+ *
+ * A visitor who lands on the wrong language decides within seconds, and on a
+ * handset this page runs to roughly 8,000px — a footer switcher is unreachable
+ * for exactly the person who needs it. Two letters keep it small enough to sit
+ * next to the CTA at 360px.
+ */
+function LangToggle({ lang }: { lang: SiteLang }) {
+  return (
+    <div style={{ display: 'inline-flex', background: '#F1F0EC', borderRadius: 999, padding: 3, gap: 2 }}>
+      {SITE_LANGS.map(code => {
+        const active = code === lang
+        return (
+          <Link
+            key={code}
+            href={LANG_PATH[code]}
+            hrefLang={code}
+            aria-label={LANG_LABEL[code]}
+            aria-current={active ? 'page' : undefined}
+            className="lang-pill"
+            style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+              padding: '5px 9px',
+              borderRadius: 999,
+              textDecoration: 'none',
+              background: active ? '#fff' : 'transparent',
+              color: active ? '#0f172a' : '#6B6B60',
+              boxShadow: active ? '0 1px 2px rgba(15,23,42,0.10)' : 'none',
+            }}
+          >
+            {LANG_SHORT[code]}
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
 
 function SortedMark({ size = 34, radius = 11 }: { size?: number; radius?: number }) {
   const id = `sg${size}${radius}`
