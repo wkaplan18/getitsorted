@@ -1,19 +1,22 @@
 // Sorted — landing page
 //
-// THESIS: Sorted is two jobs on one WhatsApp number, and the page says so out
-// loud instead of flattening them into one undifferentiated feature list. It
-// refuses the category default of a single hero plus nine equal benefit cards.
+// THESIS: One job, said once — a tradesperson texts a number and gets back a
+// quote his client takes seriously. The page refuses the category default of a
+// hero plus nine equal benefit cards.
+//
+// The money-out half (forwarding bills, reminders, payees) was cut from this
+// page in Aug 2026: it still runs in the product, but the site now sells the
+// quoting side alone until we decide how to reintroduce it. The copy and the
+// sections are recoverable from git history rather than left here commented.
 //
 // OWN-WORLD: The incumbent Sorted system, inherited: Plus Jakarta Sans display
 // over Inter, deeply rounded surfaces, real WhatsApp bubbles as the proof
-// device. What's new is a second accent — burnt amber #B4530A on warm sand
-// #FDF6EC for money-in — set against the existing green #16A34A on mint for
-// money-out. The amber is the exact accent on the PDF the tradesman's client
-// receives, so the site and the artefact match.
+// device. The accent is burnt amber #B4530A on warm sand #FDF6EC — the exact
+// accent on the PDF the tradesman's client receives, so the site and the
+// artefact match.
 //
 // STORY: A tradesman lands, sees his own job priced and sent inside WhatsApp,
-// and texts QUOTE. A household visitor scrolls one section and finds bills
-// intact.
+// and texts QUOTE.
 //
 // FIRST VIEWPORT: Amber-washed hero, headline left with the WhatsApp CTA, the
 // three-step thread on a phone right, and the finished quote document
@@ -114,9 +117,7 @@ export default function Landing({ lang }: { lang: SiteLang }) {
           .hide-mobile { display: none !important; }
           .hero-grid { grid-template-columns: 1fr !important; }
           .steps-grid { grid-template-columns: 1fr !important; }
-          .lanes-grid { grid-template-columns: 1fr !important; }
           .split-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
-          .bills-grid { grid-template-columns: 1fr !important; }
 
           /* The phone stays — it's the proof, and this audience is on a phone.
              Centre it: right-aligned in a single-column hero leaves dead space
@@ -166,7 +167,6 @@ export default function Landing({ lang }: { lang: SiteLang }) {
           </a>
           <div className="hide-mobile" style={{ display: 'flex', gap: 32 }}>
             <a href="#quotes" className="nav-link">{t.nav.quotes}</a>
-            <a href="#bills" className="nav-link">{t.nav.bills}</a>
             <a href="#who" className="nav-link">{t.nav.who}</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -313,38 +313,7 @@ export default function Landing({ lang }: { lang: SiteLang }) {
         </div>
       </section>
 
-      {/* ═══ TWO LANES — the page says out loud that it's two jobs ═══ */}
-      <section style={{ background: '#fff', padding: '64px 32px 8px' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <p style={{ textAlign: 'center', fontSize: 15, color: '#64748b', margin: '0 0 28px', lineHeight: 1.7 }}>
-            {t.lanes.intro}
-          </p>
-          <div className="lanes-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            <Lane
-              href="#quotes"
-              accent="#B4530A"
-              ground="#FDF6EC"
-              border="#F0E1CC"
-              kicker={t.lanes.in.kicker}
-              title={t.lanes.in.title}
-              body={t.lanes.in.body}
-              cta={t.lanes.in.cta}
-            />
-            <Lane
-              href="#bills"
-              accent="#16a34a"
-              ground="#F0FDF4"
-              border="#D7F0DE"
-              kicker={t.lanes.out.kicker}
-              title={t.lanes.out.title}
-              body={t.lanes.out.body}
-              cta={t.lanes.out.cta}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ SECTION A — QUOTES ═══ */}
+      {/* ═══ QUOTES ═══ */}
       <section id="quotes" style={{ padding: '88px 32px 96px', background: '#fff' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 56 }}>
@@ -403,33 +372,6 @@ export default function Landing({ lang }: { lang: SiteLang }) {
           </div>
         </div>
       </div>
-
-      {/* ═══ SECTION B — BILLS ═══ */}
-      <section id="bills" style={{ padding: '88px 32px 96px', background: '#F7FCF8' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <span className="label" style={{ color: '#16a34a' }}>{t.bills.label}</span>
-            <h2 className="section-title" style={{ fontSize: 'clamp(28px, 4vw, 40px)', margin: '0 0 16px' }}>
-              {t.bills.title}
-            </h2>
-            <p style={{ color: '#64748b', fontSize: 18, lineHeight: 1.7, maxWidth: 520, margin: '0 auto' }}>
-              {t.bills.body}
-            </p>
-          </div>
-
-          <div className="bills-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            {t.bills.cards.map(card => (
-              <BillCard key={card.title} title={card.title} body={card.body} />
-            ))}
-          </div>
-
-          <div style={{ textAlign: 'center', marginTop: 32 }}>
-            <Link href="/app" className="btn" style={{ background: '#16a34a', color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 16, padding: '14px 26px', borderRadius: 12, boxShadow: '0 1px 2px rgba(15,23,42,0.1), 0 10px 24px -10px rgba(22,163,74,0.6)' }}>
-              {t.bills.cta}
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* ═══ WHO IT'S FOR ═══ */}
       <section id="who" style={{ padding: '88px 32px', background: '#fff' }}>
@@ -590,29 +532,6 @@ function Row({ label, note, value }: { label: string; note?: string; value: stri
   )
 }
 
-function Lane(props: {
-  href: string; accent: string; ground: string; border: string
-  kicker: string; title: string; body: string; cta: string
-}) {
-  return (
-    <a
-      href={props.href}
-      className="lift"
-      style={{
-        display: 'block', textDecoration: 'none',
-        background: props.ground, border: `1px solid ${props.border}`,
-        borderRadius: 22, padding: 28,
-        boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
-      }}
-    >
-      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: props.accent }}>{props.kicker}</span>
-      <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 21, letterSpacing: '-0.02em', color: '#0f172a', margin: '10px 0 8px' }}>{props.title}</h3>
-      <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, margin: '0 0 16px' }}>{props.body}</p>
-      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700, color: props.accent }}>{props.cta} →</span>
-    </a>
-  )
-}
-
 function Step({ num, title, body, filled }: { num: string; title: string; body: string; filled?: boolean }) {
   return (
     <div style={{
@@ -624,15 +543,6 @@ function Step({ num, title, body, filled }: { num: string; title: string; body: 
       <div style={{ position: 'absolute', top: 18, right: 24, fontSize: 40, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: filled ? 'rgba(255,255,255,0.22)' : '#EBD9C2' }}>{num}</div>
       <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 18, color: filled ? '#fff' : '#0f172a', margin: '52px 0 8px' }}>{title}</h3>
       <p style={{ fontSize: 14, color: filled ? 'rgba(255,255,255,0.86)' : '#6B6B60', lineHeight: 1.7, margin: 0 }}>{body}</p>
-    </div>
-  )
-}
-
-function BillCard({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="lift" style={{ background: '#fff', borderRadius: 20, padding: 26, border: '1px solid #DFF1E4', boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 10px 24px -18px rgba(22,163,74,0.5)' }}>
-      <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 17, color: '#0f172a', margin: '0 0 8px' }}>{title}</h3>
-      <p style={{ fontSize: 14.5, color: '#64748b', lineHeight: 1.7, margin: 0 }}>{body}</p>
     </div>
   )
 }

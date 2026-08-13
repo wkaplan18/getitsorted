@@ -24,7 +24,7 @@ export const LANG_SHORT: Record<SiteLang, string> = { en: 'EN', zu: 'ZU' }
 export type SiteCopy = {
   htmlLang: string
   meta: { title: string; description: string }
-  nav: { quotes: string; bills: string; who: string; openApp: string }
+  nav: { quotes: string; who: string; openApp: string }
   hero: {
     eyebrow: string
     titleTop: string
@@ -50,11 +50,6 @@ export type SiteCopy = {
     thanks: string
   }
   float: { opened: string; ago: string }
-  lanes: {
-    intro: string
-    in: { kicker: string; title: string; body: string; cta: string }
-    out: { kicker: string; title: string; body: string; cta: string }
-  }
   quotes: {
     label: string
     title: string
@@ -77,13 +72,6 @@ export type SiteCopy = {
     trade: string
   }
   banks: string
-  bills: {
-    label: string
-    title: string
-    body: string
-    cards: Array<{ title: string; body: string }>
-    cta: string
-  }
   who: {
     label: string
     title: string
@@ -102,7 +90,7 @@ const en: SiteCopy = {
     description:
       'Answer three questions on WhatsApp and get back a branded PDF quote with your logo and banking details. Built for South African tradespeople.',
   },
-  nav: { quotes: 'Send quotes', bills: 'Track bills', who: "Who it's for", openApp: 'Open app →' },
+  nav: { quotes: 'Send quotes', who: "Who it's for", openApp: 'Open app →' },
   hero: {
     eyebrow: 'For plumbers, electricians, painters & every one-person trade',
     titleTop: 'Send a professional quote',
@@ -130,23 +118,8 @@ const en: SiteCopy = {
     thanks: 'Thanks. Putting your quote together now…',
   },
   float: { opened: 'Mrs Naidoo opened it', ago: '2 minutes ago' },
-  lanes: {
-    intro: 'One WhatsApp number. Both sides of your money.',
-    in: {
-      kicker: 'Money in',
-      title: 'Send a quote, get paid',
-      body: 'Three questions on WhatsApp and your client has a branded PDF with your banking details on it.',
-      cta: 'How quoting works',
-    },
-    out: {
-      kicker: 'Money out',
-      title: 'Never miss a bill again',
-      body: "Forward any invoice and Sorted reads the amount, due date and bank details, then reminds you before it's due.",
-      cta: 'How bills work',
-    },
-  },
   quotes: {
-    label: 'Money in · Quotes',
+    label: 'Quotes',
     title: 'Three questions. One quote.',
     body: 'You text ',
     bodyStrong: 'QUOTE',
@@ -176,18 +149,6 @@ const en: SiteCopy = {
     trade: 'Plumbing',
   },
   banks: 'Works with every SA bank',
-  bills: {
-    label: 'Money out · Bills',
-    title: 'And the bills you owe, sorted too.',
-    body: "Forward an invoice — PDF, photo, or a plain WhatsApp message. Sorted reads it, files it, and reminds you before it's due.",
-    cards: [
-      { title: 'Forward anything', body: 'Your supplier emails a PDF. The municipality sends a photo. Someone texts you "pay the vet R2000." Forward it and it’s captured — amount, due date and banking details read automatically.' },
-      { title: 'Bank details remembered', body: "Enter a payee's account once. Sorted keeps it for every future invoice from them, so a bill with missing details still arrives payable." },
-      { title: "Reminders before it's due", body: 'A WhatsApp three days before every due date, with the banking details attached ready to copy. Overdue bills get flagged red on your dashboard.' },
-      { title: 'Someone else can send it', body: 'Add a trusted sender — a partner, an office manager, a supplier — and what they forward lands in your dashboard. You get pinged the moment it does.' },
-    ],
-    cta: 'Open your dashboard →',
-  },
   who: {
     label: "Who it's for",
     title: 'Anyone who does the work and does the paperwork',
@@ -219,7 +180,7 @@ const zu: SiteCopy = {
     description:
       'Phendula imibuzo emithathu ku-WhatsApp uthole i-PDF quote enelogo yakho nemininingwane yebhange. Yenzelwe abasebenzi baseNingizimu Afrika.',
   },
-  nav: { quotes: 'Thumela ama-quote', bills: 'Landelela amabhili', who: 'Ingeyabani', openApp: 'Vula i-app →' },
+  nav: { quotes: 'Thumela ama-quote', who: 'Ingeyabani', openApp: 'Vula i-app →' },
   hero: {
     eyebrow: 'Yabo bonke ababhali bamanzi, ugesi, abapendi nawo wonke umuntu ozisebenzayo',
     titleTop: 'Thumela i-quote',
@@ -247,23 +208,8 @@ const zu: SiteCopy = {
     thanks: 'Ngiyabonga. Ngiyalungisa i-quote yakho manje…',
   },
   float: { opened: 'U-Mrs Naidoo uyivulile', ago: 'emizuzwini emi-2 edlule' },
-  lanes: {
-    intro: 'Inombolo eyodwa ye-WhatsApp. Zombili izinhlangothi zemali yakho.',
-    in: {
-      kicker: 'Imali engenayo',
-      title: 'Thumela i-quote, uthole imali',
-      body: 'Imibuzo emithathu ku-WhatsApp bese ikhasimende lakho lithola i-PDF enemininingwane yebhange lakho.',
-      cta: 'Ama-quote asebenza kanjani',
-    },
-    out: {
-      kicker: 'Imali ephumayo',
-      title: 'Ungaphuthelwa yibhili futhi',
-      body: 'Dlulisela noma yiluphi u-invoice bese uSorted afunde inani, usuku lokugcina nemininingwane yebhange, akukhumbuze ngaphambi kwesikhathi.',
-      cta: 'Amabhili asebenza kanjani',
-    },
-  },
   quotes: {
-    label: 'Imali engenayo · Ama-quote',
+    label: 'Ama-quote',
     title: 'Imibuzo emithathu. I-quote eyodwa.',
     body: 'Uthumela ',
     bodyStrong: 'QUOTE',
@@ -293,18 +239,6 @@ const zu: SiteCopy = {
     trade: 'Amanzi nezimpompi',
   },
   banks: 'Isebenza nawo wonke amabhange aseNingizimu Afrika',
-  bills: {
-    label: 'Imali ephumayo · Amabhili',
-    title: 'Namabhili owakweletayo, alungisiwe nawo.',
-    body: 'Dlulisela u-invoice — i-PDF, isithombe, noma umlayezo nje we-WhatsApp. USorted uyawufunda, awugcine, akukhumbuze ngaphambi kwesikhathi.',
-    cards: [
-      { title: 'Dlulisela noma yini', body: 'Umthengisi wakho uthumela i-PDF nge-imeyili. Umasipala uthumela isithombe. Othile uthumela umlayezo othi "khokhela udokotela wezilwane u-R2000." Kudluliseleni bese kuyagcinwa — inani, usuku lokugcina nemininingwane yebhange kufundwa ngokuzenzakalela.' },
-      { title: 'Imininingwane yebhange iyakhunjulwa', body: 'Faka i-akhawunti yomuntu okhokhelwayo kanye. USorted uyayigcina kuwo wonke ama-invoice azayo avela kuye, ngakho ibhili elingenayo yonke imininingwane lisafika likhokheka.' },
-      { title: 'Izikhumbuzo ngaphambi kwesikhathi', body: 'I-WhatsApp izinsuku ezintathu ngaphambi kosuku ngalunye lokugcina, nemininingwane yebhange esilungele ukukopishwa. Amabhili adlulelwe yisikhathi akhonjiswa ngokubomvu ku-dashboard yakho.' },
-      { title: 'Omunye umuntu angathumela', body: 'Faka umthumeli othembekile — umlingani, umphathi wehhovisi, umthengisi — bese lokho abakudlulisayo kufika ku-dashboard yakho. Uyaziswa ngaso leso sikhathi.' },
-    ],
-    cta: 'Vula i-dashboard yakho →',
-  },
   who: {
     label: 'Ingeyabani',
     title: 'Noma ubani owenza umsebenzi futhi enze nomsebenzi wamaphepha',
