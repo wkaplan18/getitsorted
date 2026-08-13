@@ -134,7 +134,7 @@ export default function Landing({ lang }: { lang: SiteLang }) {
         /* The number card is the one thing on the page a visitor is asked to
            act on without tapping, so it lifts on hover like the buttons do and
            keeps a visible focus ring for keyboard users. */
-        .hero-number { transition: transform 180ms cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 180ms ease; }
+        .hero-number { transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease; }
         .hero-number:hover { transform: translateY(-2px); box-shadow: 0 1px 2px rgba(15,23,42,0.05), 0 18px 34px -18px rgba(180,83,10,0.55); }
         .hero-number:active { transform: translateY(0); }
         .hero-number:focus-visible { outline: 2px solid #B4530A; outline-offset: 3px; }
