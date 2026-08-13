@@ -219,6 +219,9 @@ export type Draft = {
 /** One entry in the "who is this for?" list, frozen at the moment it was sent. */
 export type ClientOption = { id: string; name: string; address: string | null }
 
+/** One entry in the "which quote should I invoice?" list, frozen the same way. */
+export type QuoteOption = { id: string; number: string; name: string }
+
 export type ConvoState = {
   step:
     // One-time profile setup. Everything captured here is stored against the
@@ -242,6 +245,7 @@ export type ConvoState = {
     // The numbered MENU and the jobs reachable only from it.
     | 'menu'
     | 'menu_logo'
+    | 'invoice_pick'
     | 'edit_client_pick'
     | 'edit_client_name'
     | 'edit_client_address'
@@ -249,6 +253,10 @@ export type ConvoState = {
   // The numbered client list as shown, so a reply of "2" resolves to the same
   // person even if a quote was saved in between and reordered the list.
   client_options?: ClientOption[]
+  // The numbered quote list for 'invoice_pick', frozen for the same reason: a
+  // quote saved between the two messages must not renumber the list underneath
+  // the user and invoice the wrong job.
+  quote_options?: QuoteOption[]
   // For 'disambiguate': the original message, replayed down whichever path the
   // user picks so they never have to type it twice.
   pending_message?: string
@@ -387,6 +395,113 @@ export async function saveQuote(opts: {
   }
 
   return { quote: quote as Quote, items: (items ?? []) as QuoteItem[] }
+}
+
+/**
+ * The quotes a user could turn into an invoice: their recent quotes, newest
+ * first, excluding ones that are already invoices.
+ *
+ * Cancelled quotes are excluded; paid ones are not. A tradesperson who took
+ * cash on the day still needs the invoice for his own books.
+ */
+export async function invoiceableQuotes(
+  userId: string,
+  limit = 5,
+): Promise<Array<{ id: string; number: string; total: number; customerName: string | null }>> {
+  const { data } = await supabaseAdmin
+    .from('quotes')
+    .select('id, number, total, customers(name)')
+    .eq('user_id', userId)
+    .eq('doc_type', 'quote')
+    .neq('status', 'cancelled')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  return (data ?? []).map(row => {
+    // Supabase renders a foreign-key join as an array, not an object.
+    const joined = row.customers as unknown
+    const name = Array.isArray(joined) ? joined[0]?.name : (joined as { name?: string } | null)?.name
+    return { id: row.id, number: row.number, total: Number(row.total), customerName: name ?? null }
+  })
+}
+
+/**
+ * Copies an accepted quote into an invoice.
+ *
+ * The figures are copied, never recomputed: if the user registered for VAT
+ * between quoting and invoicing, the client must still be charged the amount he
+ * agreed to. The quote is left in place and marked accepted — it is the record
+ * of what was agreed, and deleting it would erase that.
+ */
+export async function createInvoiceFromQuote(
+  userId: string,
+  quoteId: string,
+): Promise<{ quote: Quote; items: QuoteItem[] } | null> {
+  const { data: source } = await supabaseAdmin
+    .from('quotes')
+    .select('*')
+    .eq('id', quoteId)
+    .eq('user_id', userId)   // scoped to the owner: a token is not authority to invoice
+    .maybeSingle()
+
+  if (!source) return null
+
+  const { data: sourceItems } = await supabaseAdmin
+    .from('quote_items').select('*').eq('quote_id', source.id).order('position')
+
+  const number = await nextQuoteNumber(userId, 'invoice')
+
+  const { data: invoice, error } = await supabaseAdmin
+    .from('quotes')
+    .insert({
+      user_id: userId,
+      customer_id: source.customer_id,
+      number,
+      doc_type: 'invoice',
+      status: 'sent',
+      subtotal: source.subtotal,
+      vat_amount: source.vat_amount,
+      total: source.total,
+      public_token: publicToken(),   // its own token — never the quote's
+      notes: source.notes,
+      raw_message: source.raw_message,
+      sent_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error || !invoice) {
+    console.error('[quotes] invoice insert failed:', error?.message)
+    return null
+  }
+
+  const rows = (sourceItems ?? []).map((item, i) => ({
+    quote_id: invoice.id,
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    line_total: item.line_total,
+    position: i,
+  }))
+
+  const { data: items, error: itemsError } = await supabaseAdmin
+    .from('quote_items').insert(rows).select()
+
+  if (itemsError) {
+    console.error('[quotes] invoice items insert failed:', itemsError.message)
+    // An invoice with no lines is worse than none — roll back rather than
+    // handing the customer a link to an empty demand for money.
+    await supabaseAdmin.from('quotes').delete().eq('id', invoice.id)
+    return null
+  }
+
+  // Only once the invoice actually exists. 'paid' is left alone — it is further
+  // along than 'accepted' and must not be walked backwards.
+  if (source.status !== 'paid') {
+    await supabaseAdmin.from('quotes').update({ status: 'accepted' }).eq('id', source.id)
+  }
+
+  return { quote: invoice as Quote, items: (items ?? []) as QuoteItem[] }
 }
 
 export function quoteUrl(token: string): string {

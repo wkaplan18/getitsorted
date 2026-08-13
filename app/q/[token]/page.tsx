@@ -39,7 +39,9 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
   const { quote, items, business, customer } = view
   const isInvoice = quote.doc_type === 'invoice'
   const isPaid = quote.status === 'paid'
-  const showVat = Number(quote.vat_amount) > 0
+  // Matches the PDF: a registered vendor shows the VAT breakdown even on a
+  // zero-VAT document, and everyone else gets the not-registered note instead.
+  const showVat = Number(quote.vat_amount) > 0 || Boolean(business.vat_number)
 
   // First open → tell the tradesperson. Business-initiated, so it needs an
   // approved Utility template; a missing one must not break the page.
@@ -108,7 +110,9 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
                 the number and date floating mid-card. */}
             <div className="shrink-0 border-t border-[#E2E0D9] pt-4 sm:border-0 sm:pt-0 sm:text-right">
               <p className="text-xl font-semibold tracking-[-0.02em] text-[#B4530A] sm:text-2xl">
-                {isInvoice ? 'Invoice' : 'Quotation'}
+                {/* Only a registered vendor may head a document "Tax Invoice"
+                    (VAT Act s20) — for everyone else it is an invoice. */}
+                {isInvoice ? (business.vat_number ? 'Tax Invoice' : 'Invoice') : 'Quotation'}
               </p>
               <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-sm sm:mt-1 sm:block">
                 <span className="font-medium text-[#1A1A17]">{quote.number}</span>
@@ -176,6 +180,17 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
                   {fmtR(quote.total)}
                 </span>
               </div>
+
+              {/* Said plainly rather than as "zero-rated" or "nil VAT" — both
+                  are classifications of a registered vendor's supplies, and a
+                  business that isn't registered has neither. Without it the
+                  customer can't tell whether VAT is included or left off. */}
+              {!showVat ? (
+                <p className="mt-3 border-t border-[#E2E0D9] pt-3 text-xs leading-relaxed text-[#6B6B60]">
+                  {business.business_name} is not registered for VAT. No VAT is charged on this{' '}
+                  {isInvoice ? 'invoice' : 'quotation'}.
+                </p>
+              ) : null}
             </div>
           </section>
 

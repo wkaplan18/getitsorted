@@ -88,6 +88,9 @@ export type StringKey =
   | 'quotes_header'
   // menu
   | 'menu'
+  | 'invoice_none'
+  | 'invoice_pick'
+  | 'invoice_sent'
   | 'menu_invalid'
   | 'menu_logo_ask'
   | 'menu_logo_again'
@@ -164,8 +167,11 @@ const en: Strings = {
   quotes_header: 'Your last quotes:',
 
   menu:
-    'What would you like to do?\n\n1  New quote\n2  My recent quotes\n3  Send a new logo\n4  My business details\n5  My banking details\n6  A client\'s details\n7  Bills I need to pay\n8  Dashboard login code\n9  Change language\n\nReply with a number.',
-  menu_invalid: "That's not one of the options. Reply with a number from 1 to 9.",
+    'What would you like to do?\n\n1  New quote\n2  Turn a quote into an invoice\n3  My recent quotes\n4  Send a new logo\n5  My business details\n6  My banking details\n7  A client\'s details\n8  Bills I need to pay\n9  Dashboard login code\n10  Change language\n\nReply with a number.',
+  menu_invalid: "That's not one of the options. Reply with a number from 1 to 10.",
+  invoice_none: "You haven't made any quotes yet — an invoice is made from one.",
+  invoice_pick: 'Which quote should I invoice?\n\n{list}\n\nReply with a number.',
+  invoice_sent: '{number} ready 👇\n{link}\n\nSend that to {customer} — same figures as {source}, now as an invoice.',
   menu_logo_ask:
     "Send me your new logo as a picture and I'll put it on every quote from now on.\n\nChanged your mind? Reply CANCEL.",
   menu_logo_again: "That wasn't a picture. Send the logo as an image, or reply CANCEL.",
@@ -244,8 +250,11 @@ const zu: Strings = {
   quotes_header: 'Ama-quote akho akamuva:',
 
   menu:
-    'Ufuna ukwenzani?\n\n1  I-quote entsha\n2  Ama-quote ami akamuva\n3  Thumela ilogo entsha\n4  Imininingwane yebhizinisi lami\n5  Imininingwane yebhange lami\n6  Imininingwane yekhasimende\n7  Amabhili okumele ngiwakhokhe\n8  Ikhodi yokungena ku-dashboard\n9  Shintsha ulimi\n\nPhendula ngenombolo.',
-  menu_invalid: 'Leyo ayikho kulezi zinketho. Phendula ngenombolo kusukela ku-1 kuya ku-9.',
+    'Ufuna ukwenzani?\n\n1  I-quote entsha\n2  Guqula i-quote ibe yi-invoice\n3  Ama-quote ami akamuva\n4  Thumela ilogo entsha\n5  Imininingwane yebhizinisi lami\n6  Imininingwane yebhange lami\n7  Imininingwane yekhasimende\n8  Amabhili okumele ngiwakhokhe\n9  Ikhodi yokungena ku-dashboard\n10  Shintsha ulimi\n\nPhendula ngenombolo.',
+  menu_invalid: 'Leyo ayikho kulezi zinketho. Phendula ngenombolo kusukela ku-1 kuya ku-10.',
+  invoice_none: 'Awukakenzi ama-quote — i-invoice yenziwa nge-quote.',
+  invoice_pick: 'Iyiphi i-quote ofuna ngiyenze i-invoice?\n\n{list}\n\nPhendula ngenombolo.',
+  invoice_sent: 'I-{number} isilungile 👇\n{link}\n\nThumela lokho ku-{customer} — amanani afanayo ne-{source}, manje kuyi-invoice.',
   menu_logo_ask:
     'Ngithumele ilogo yakho entsha njengesithombe, ngizoyifaka kuwo wonke ama-quote kusukela manje.\n\nUshintshe umqondo? Phendula ngo-CANCEL.',
   menu_logo_again: 'Leso bekungesona isithombe. Thumela ilogo njengesithombe, noma uphendule ngo-CANCEL.',
@@ -324,8 +333,11 @@ const af: Strings = {
   quotes_header: 'Jou laaste kwotasies:',
 
   menu:
-    'Wat wil jy doen?\n\n1  Nuwe kwotasie\n2  My onlangse kwotasies\n3  Stuur \'n nuwe logo\n4  My besigheidsbesonderhede\n5  My bankbesonderhede\n6  \'n Kliënt se besonderhede\n7  Rekeninge wat ek moet betaal\n8  Dashboard-inteikenkode\n9  Verander taal\n\nAntwoord met \'n nommer.',
-  menu_invalid: 'Dit is nie een van die opsies nie. Antwoord met \'n nommer van 1 tot 9.',
+    'Wat wil jy doen?\n\n1  Nuwe kwotasie\n2  Maak \'n faktuur van \'n kwotasie\n3  My onlangse kwotasies\n4  Stuur \'n nuwe logo\n5  My besigheidsbesonderhede\n6  My bankbesonderhede\n7  \'n Kliënt se besonderhede\n8  Rekeninge wat ek moet betaal\n9  Dashboard-inteikenkode\n10  Verander taal\n\nAntwoord met \'n nommer.',
+  menu_invalid: 'Dit is nie een van die opsies nie. Antwoord met \'n nommer van 1 tot 10.',
+  invoice_none: 'Jy het nog geen kwotasies nie — \'n faktuur word van een gemaak.',
+  invoice_pick: 'Watter kwotasie moet ek faktureer?\n\n{list}\n\nAntwoord met \'n nommer.',
+  invoice_sent: '{number} gereed 👇\n{link}\n\nStuur dit aan {customer} — dieselfde bedrae as {source}, nou as \'n faktuur.',
   menu_logo_ask:
     'Stuur my jou nuwe logo as \'n prent, dan sit ek dit voortaan op elke kwotasie.\n\nVan plan verander? Antwoord CANCEL.',
   menu_logo_again: 'Dit was nie \'n prent nie. Stuur die logo as \'n prent, of antwoord CANCEL.',

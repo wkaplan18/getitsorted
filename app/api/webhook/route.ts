@@ -5,7 +5,7 @@ import { extractBillFromText, extractBillFromPDF, extractBillFromImage, Extracte
 import { sendWhatsApp, sendWhatsAppTemplate, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation, formatReminderConfirmation } from '@/lib/whatsapp'
 import {
   handleConvoStep, pendingDisambiguation, startLanguagePicker, startGuidedQuote, startQuote, askBillOrQuote,
-  showMenu, CONVO_USER_COLUMNS, type ConvoUser,
+  showMenu, startInvoice, CONVO_USER_COLUMNS, type ConvoUser,
 } from '@/lib/convo'
 import { setConvoState } from '@/lib/quotes'
 import { recentQuotesMessage, pendingBillsMessage, issueLoginCode } from '@/lib/replies'
@@ -41,6 +41,7 @@ const HELP_MESSAGE = `Here's what I can do:
 
 *Sending quotes*
 🧾 *QUOTE* — I'll ask you three quick questions and send back a PDF quote with your logo, ready to forward to your client.
+🧮 *INVOICE* — turn a quote you've already sent into an invoice, same figures.
 📋 *QUOTES* — your recent quotes
 
 *Keeping track of what you owe*
@@ -172,6 +173,18 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
       return true
     }
     await startGuidedQuote(target)
+    return true
+  }
+
+  // "INVOICE" — turn a quote already sent into an invoice. Checked before
+  // "INVOICES" would be, and never creates an account: there is nothing to
+  // invoice from until you've sent a quote.
+  if (cmd === 'invoice' || cmd === 'faktuur' || cmd === 'i-invoice') {
+    if (!user) {
+      await sendWhatsApp(from, t(lang, 'invoice_none'))
+      return true
+    }
+    await startInvoice(user, lang)
     return true
   }
 

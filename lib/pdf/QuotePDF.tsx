@@ -51,6 +51,7 @@ const s = StyleSheet.create({
   tDivider:    { borderTopWidth: 0.5, borderTopColor: BORDER, marginVertical: 6 },
   tBigLabel:   { fontSize: 11.5, fontFamily: 'Helvetica-Bold', color: ACCENT },
   tBigVal:     { fontSize: 11.5, fontFamily: 'Helvetica-Bold', color: ACCENT },
+  vatNote:     { fontSize: 7, color: MUTED, lineHeight: 1.45, marginTop: 7, borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 6 },
 
   section:     { marginTop: 20 },
   secTitle:    { fontSize: 6.5, color: ACCENT, fontFamily: 'Helvetica-Bold', letterSpacing: 0.6, borderBottomWidth: 0.5, borderBottomColor: BORDER, paddingBottom: 4, marginBottom: 7 },
@@ -123,13 +124,26 @@ export function QuotePDF(props: QuotePDFProps) {
     customerName, customerAddress, items,
   } = props
 
-  const title = docType === 'invoice' ? 'INVOICE' : 'QUOTATION'
   const mark = monogram(businessName)
   const hasBank = Boolean(bankName || accountNumber)
   // VAT only appears when the business is actually registered. Most of these
   // users are not, and a R0.00 VAT row on their quote invites questions they
   // don't want from a customer.
   const showVat = vatAmount > 0 || Boolean(vatNumber)
+
+  // Only a registered vendor may head a document "TAX INVOICE" (VAT Act s20) —
+  // for everyone else it is an invoice, full stop.
+  const title = docType === 'invoice'
+    ? (vatNumber ? 'TAX INVOICE' : 'INVOICE')
+    : 'QUOTATION'
+
+  // Said plainly rather than as "zero-rated" or "nil VAT": those are
+  // classifications of a registered vendor's supplies, and a business that
+  // isn't registered has neither. Without this line a client sees a total with
+  // no VAT on it and cannot tell whether VAT is included, excluded, or missing.
+  const vatNote = showVat
+    ? null
+    : `${businessName} is not registered for VAT. No VAT is charged on this ${docType === 'invoice' ? 'invoice' : 'quotation'}.`
 
   return (
     <Document title={`${number} — ${businessName}`} author={businessName}>
@@ -204,6 +218,7 @@ export function QuotePDF(props: QuotePDFProps) {
               <Text style={s.tBigLabel}>TOTAL</Text>
               <Text style={s.tBigVal}>{fmtR(total)}</Text>
             </View>
+            {vatNote ? <Text style={s.vatNote}>{vatNote}</Text> : null}
           </View>
         </View>
 

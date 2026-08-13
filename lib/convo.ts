@@ -11,13 +11,14 @@
 
 import { supabaseAdmin } from './supabase'
 import { sendWhatsApp, downloadMedia } from './whatsapp'
-import { t, toLang, langFromChoice, type Lang } from './i18n'
+import { t, toLang, langFromChoice, fmtRand, type Lang } from './i18n'
 import { applyQuoteEdit, type ExtractedBill } from './claude'
 import { resolveBank, cleanAccountNumber } from './banks'
 import {
   renderDraft, renderLines, saveQuote, setConvoState, quoteUrl,
   recentCustomers, findCustomer, normaliseName,
-  type ConvoState, type Draft, type ClientOption,
+  invoiceableQuotes, createInvoiceFromQuote,
+  type ConvoState, type Draft,
 } from './quotes'
 import { recentQuotesMessage, pendingBillsMessage, issueLoginCode } from './replies'
 
@@ -86,7 +87,7 @@ async function askForClient(user: ConvoUser, lang: Lang, draft: Draft): Promise<
 }
 
 /** Maps a bare "2" onto the list the user was shown. Null for anything else. */
-function pickFromList(text: string, options?: ClientOption[]): ClientOption | null {
+function pickFromList<T>(text: string, options?: T[]): T | null {
   if (!options || options.length === 0) return null
   if (!/^\d{1,2}$/.test(text.trim())) return null
   const index = parseInt(text.trim(), 10) - 1
@@ -136,42 +137,46 @@ export async function handleConvoStep(
           return true
 
         case '2':
+          await startInvoice(user, lang)
+          return true
+
+        case '3':
           await setConvoState(user.id, null)
           await sendWhatsApp(from, await recentQuotesMessage(user.id, lang))
           return true
 
-        case '3':
+        case '4':
           await setConvoState(user.id, { step: 'menu_logo' })
           await sendWhatsApp(from, t(lang, 'menu_logo_ask'))
           return true
 
-        case '4':
+        case '5':
           // Same questions as first-time setup, but `edit` stops the chain at
           // the end instead of running on into banking and a quote.
           await setConvoState(user.id, { step: 'ask_business_name', edit: 'business' })
           await sendWhatsApp(from, t(lang, 'ask_business_name'))
           return true
 
-        case '5':
+        case '6':
           await setConvoState(user.id, { step: 'ask_bank', edit: 'bank' })
           await sendWhatsApp(from, t(lang, 'ask_bank'))
           return true
 
-        case '6':
-          await startClientEdit(user, lang)
-          return true
-
         case '7':
-          await setConvoState(user.id, null)
-          await sendWhatsApp(from, await pendingBillsMessage(user.id))
+          await startClientEdit(user, lang)
           return true
 
         case '8':
           await setConvoState(user.id, null)
-          await sendWhatsApp(from, await issueLoginCode(from))
+          await sendWhatsApp(from, await pendingBillsMessage(user.id))
           return true
 
         case '9':
+          await setConvoState(user.id, null)
+          await sendWhatsApp(from, await issueLoginCode(from))
+          return true
+
+        case '10':
           await startLanguagePicker(user)
           return true
 
@@ -197,6 +202,30 @@ export async function handleConvoStep(
         return true
       }
       await sendWhatsApp(from, t(lang, 'menu_logo_again'))
+      return true
+    }
+
+    case 'invoice_pick': {
+      const picked = pickFromList(text, state.quote_options)
+      if (!picked) {
+        await startInvoice(user, lang)
+        return true
+      }
+
+      const created = await createInvoiceFromQuote(user.id, picked.id)
+      if (!created) {
+        await setConvoState(user.id, null)
+        await sendWhatsApp(from, t(lang, 'save_failed'))
+        return true
+      }
+
+      await setConvoState(user.id, null)
+      await sendWhatsApp(from, t(lang, 'invoice_sent', {
+        number: created.quote.number,
+        link: quoteUrl(created.quote.public_token),
+        customer: picked.name,
+        source: picked.number,
+      }))
       return true
     }
 
@@ -553,7 +582,38 @@ export async function showMenu(user: ConvoUser): Promise<void> {
 }
 
 /**
- * Menu option 6 — correct a saved client's name or address.
+ * The INVOICE command, and menu option 2 — turn a quote already sent into an
+ * invoice.
+ *
+ * Built as a copy rather than a status flip on the quote: the quote is the
+ * record of what was agreed and stays exactly as the client saw it, with its
+ * own link that keeps working. The invoice is a second document with its own
+ * number and its own token.
+ */
+export async function startInvoice(user: ConvoUser, lang: Lang): Promise<void> {
+  const quotes = await invoiceableQuotes(user.id, 5)
+
+  if (quotes.length === 0) {
+    await setConvoState(user.id, null)
+    await sendWhatsApp(user.whatsapp_number, t(lang, 'invoice_none'))
+    return
+  }
+
+  const options = quotes.map(q => ({
+    id: q.id,
+    number: q.number,
+    name: q.customerName ?? '',
+  }))
+  const list = quotes
+    .map((q, i) => `${i + 1}. ${q.number}${q.customerName ? ` — ${q.customerName}` : ''} — ${fmtRand(q.total)}`)
+    .join('\n')
+
+  await setConvoState(user.id, { step: 'invoice_pick', quote_options: options })
+  await sendWhatsApp(user.whatsapp_number, t(lang, 'invoice_pick', { list }))
+}
+
+/**
+ * Menu option 7 — correct a saved client's name or address.
  *
  * Same frozen-list treatment as step 1 of a quote: the options are stored on
  * the conversation state so a reply of "2" can't be renumbered underneath them.
