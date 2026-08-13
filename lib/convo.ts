@@ -16,9 +16,10 @@ import { applyQuoteEdit, type ExtractedBill } from './claude'
 import { resolveBank, cleanAccountNumber } from './banks'
 import {
   renderDraft, renderLines, saveQuote, setConvoState, quoteUrl,
-  recentCustomers, findCustomer,
+  recentCustomers, findCustomer, normaliseName,
   type ConvoState, type Draft, type ClientOption,
 } from './quotes'
+import { recentQuotesMessage, pendingBillsMessage, issueLoginCode } from './replies'
 
 /** The subset of the users row this module needs. */
 export type ConvoUser = {
@@ -124,6 +125,131 @@ export async function handleConvoStep(
   }
 
   switch (state.step) {
+    // The numbered menu. Every option is reachable by typing its keyword too —
+    // this exists for the user who doesn't know the keywords, which on this
+    // product is most of them.
+    case 'menu': {
+      switch (text.trim()) {
+        case '1':
+          await setConvoState(user.id, null)
+          await startGuidedQuote(user)
+          return true
+
+        case '2':
+          await setConvoState(user.id, null)
+          await sendWhatsApp(from, await recentQuotesMessage(user.id, lang))
+          return true
+
+        case '3':
+          await setConvoState(user.id, { step: 'menu_logo' })
+          await sendWhatsApp(from, t(lang, 'menu_logo_ask'))
+          return true
+
+        case '4':
+          // Same questions as first-time setup, but `edit` stops the chain at
+          // the end instead of running on into banking and a quote.
+          await setConvoState(user.id, { step: 'ask_business_name', edit: 'business' })
+          await sendWhatsApp(from, t(lang, 'ask_business_name'))
+          return true
+
+        case '5':
+          await setConvoState(user.id, { step: 'ask_bank', edit: 'bank' })
+          await sendWhatsApp(from, t(lang, 'ask_bank'))
+          return true
+
+        case '6':
+          await startClientEdit(user, lang)
+          return true
+
+        case '7':
+          await setConvoState(user.id, null)
+          await sendWhatsApp(from, await pendingBillsMessage(user.id))
+          return true
+
+        case '8':
+          await setConvoState(user.id, null)
+          await sendWhatsApp(from, await issueLoginCode(from))
+          return true
+
+        case '9':
+          await startLanguagePicker(user)
+          return true
+
+        default:
+          // A number that isn't on the list is a miss-tap — show it again.
+          if (/^\d+$/.test(text.trim())) {
+            await sendWhatsApp(from, `${t(lang, 'menu_invalid')}\n\n${t(lang, 'menu')}`)
+            return true
+          }
+          // Anything else is someone who opened the menu and then decided to
+          // just type the job. Drop the menu and let the message through rather
+          // than making them answer it first.
+          await setConvoState(user.id, null)
+          return false
+      }
+    }
+
+    case 'menu_logo': {
+      if (message.type === 'image' && message.image) {
+        const uploaded = await saveLogo(user.id, message.image.id)
+        await setConvoState(user.id, null)
+        await sendWhatsApp(from, uploaded ? t(lang, 'logo_saved') : t(lang, 'save_failed'))
+        return true
+      }
+      await sendWhatsApp(from, t(lang, 'menu_logo_again'))
+      return true
+    }
+
+    case 'edit_client_pick': {
+      const picked = pickFromList(text, state.client_options)
+      const known = picked ?? (text ? await findCustomer(user.id, text) : null)
+      if (!known) {
+        await startClientEdit(user, lang)
+        return true
+      }
+      await setConvoState(user.id, { step: 'edit_client_name', client_id: known.id })
+      await sendWhatsApp(from, t(lang, 'edit_client_name', { customer: known.name }))
+      return true
+    }
+
+    case 'edit_client_name': {
+      if (!state.client_id) {
+        await setConvoState(user.id, null)
+        return true
+      }
+      if (text && !SKIP_WORDS.has(lower)) {
+        // normalised_name is what findCustomer matches on, so it has to move
+        // with the display name or the client becomes unfindable by the new one.
+        await supabaseAdmin
+          .from('customers')
+          .update({ name: text, normalised_name: normaliseName(text) })
+          .eq('id', state.client_id)
+          .eq('user_id', user.id)
+      }
+      await setConvoState(user.id, { step: 'edit_client_address', client_id: state.client_id })
+      await sendWhatsApp(from, t(lang, 'edit_client_address'))
+      return true
+    }
+
+    case 'edit_client_address': {
+      if (!state.client_id) {
+        await setConvoState(user.id, null)
+        return true
+      }
+      if (text && !SKIP_WORDS.has(lower)) {
+        await supabaseAdmin
+          .from('customers')
+          .update({ address: NO_ADDRESS.has(lower) ? null : text })
+          .eq('id', state.client_id)
+          .eq('user_id', user.id)
+      }
+      const { data: saved } = await supabaseAdmin
+        .from('customers').select('name').eq('id', state.client_id).maybeSingle()
+      await setConvoState(user.id, null)
+      await sendWhatsApp(from, t(lang, 'edit_client_saved', { customer: saved?.name ?? '' }))
+      return true
+    }
+
     case 'pick_language': {
       const picked = langFromChoice(text)
       if (!picked) {
@@ -160,7 +286,7 @@ export async function handleConvoStep(
         return true
       }
       await supabaseAdmin.from('users').update({ business_name: text }).eq('id', user.id)
-      await setConvoState(user.id, { step: 'ask_trade', draft: state.draft })
+      await setConvoState(user.id, { step: 'ask_trade', draft: state.draft, edit: state.edit })
       await sendWhatsApp(from, t(lang, 'ask_trade', { business: text }))
       return true
     }
@@ -169,7 +295,7 @@ export async function handleConvoStep(
       if (text && !SKIP_WORDS.has(lower)) {
         await supabaseAdmin.from('users').update({ trade: text }).eq('id', user.id)
       }
-      await setConvoState(user.id, { step: 'ask_name', draft: state.draft })
+      await setConvoState(user.id, { step: 'ask_name', draft: state.draft, edit: state.edit })
       await sendWhatsApp(from, t(lang, 'ask_name'))
       return true
     }
@@ -178,6 +304,13 @@ export async function handleConvoStep(
       if (text && !SKIP_WORDS.has(lower)) {
         await supabaseAdmin.from('users').update({ name: text }).eq('id', user.id)
       }
+      // Reached from the menu, this is the end of the job — an already
+      // onboarded user must not be walked through banking and a logo again.
+      if (state.edit === 'business') {
+        await setConvoState(user.id, null)
+        await sendWhatsApp(from, t(lang, 'profile_updated'))
+        return true
+      }
       await setConvoState(user.id, { step: 'ask_bank', draft: state.draft })
       await sendWhatsApp(from, t(lang, 'ask_bank'))
       return true
@@ -185,6 +318,11 @@ export async function handleConvoStep(
 
     case 'ask_bank': {
       if (!text || SKIP_WORDS.has(lower)) {
+        if (state.edit === 'bank') {
+          await setConvoState(user.id, null)
+          await sendWhatsApp(from, t(lang, 'bank_skipped'))
+          return true
+        }
         await setConvoState(user.id, { step: 'ask_logo', draft: state.draft })
         await sendWhatsApp(from, t(lang, 'bank_skipped'))
         await sendWhatsApp(from, t(lang, 'ask_logo'))
@@ -215,11 +353,19 @@ export async function handleConvoStep(
       await supabaseAdmin.from('users').update({ account_number: account }).eq('id', user.id)
 
       const fresh = await reloadUser(user.id)
-      await setConvoState(user.id, { step: 'ask_logo', draft: state.draft })
-      await sendWhatsApp(from, t(lang, 'bank_saved', {
+      const bankSaved = t(lang, 'bank_saved', {
         bank: fresh?.bank_name ?? 'your bank',
         account,
-      }))
+      })
+
+      if (state.edit === 'bank') {
+        await setConvoState(user.id, null)
+        await sendWhatsApp(from, bankSaved)
+        return true
+      }
+
+      await setConvoState(user.id, { step: 'ask_logo', draft: state.draft })
+      await sendWhatsApp(from, bankSaved)
       await sendWhatsApp(from, t(lang, 'ask_logo'))
       return true
     }
@@ -392,6 +538,41 @@ export function pendingDisambiguation(
 // ---------------------------------------------------------------------------
 // Starting flows
 // ---------------------------------------------------------------------------
+
+/**
+ * The MENU command — everything Sorted can do, as a numbered list.
+ *
+ * The keyword commands still work and always will, but they only help someone
+ * who already knows them. A tradesperson meeting this on WhatsApp for the first
+ * time needs to be shown the options, not asked to remember them.
+ */
+export async function showMenu(user: ConvoUser): Promise<void> {
+  const lang = toLang(user.language)
+  await setConvoState(user.id, { step: 'menu' })
+  await sendWhatsApp(user.whatsapp_number, t(lang, 'menu'))
+}
+
+/**
+ * Menu option 6 — correct a saved client's name or address.
+ *
+ * Same frozen-list treatment as step 1 of a quote: the options are stored on
+ * the conversation state so a reply of "2" can't be renumbered underneath them.
+ */
+async function startClientEdit(user: ConvoUser, lang: Lang): Promise<void> {
+  const recent = await recentCustomers(user.id, 5)
+
+  if (recent.length === 0) {
+    await setConvoState(user.id, null)
+    await sendWhatsApp(user.whatsapp_number, t(lang, 'edit_client_none'))
+    return
+  }
+
+  const options = recent.map(c => ({ id: c.id, name: c.name, address: c.address }))
+  const list = options.map((c, i) => `${i + 1}. ${c.name}`).join('\n')
+
+  await setConvoState(user.id, { step: 'edit_client_pick', client_options: options })
+  await sendWhatsApp(user.whatsapp_number, t(lang, 'edit_client_pick', { list }))
+}
 
 /** Asks a brand-new user which language to reply in. */
 export async function startLanguagePicker(user: ConvoUser, draft?: Draft): Promise<void> {

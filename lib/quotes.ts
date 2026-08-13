@@ -239,6 +239,12 @@ export type ConvoState = {
     // back for confirmation instead of being collected step by step.
     | 'confirm_quote'
     | 'disambiguate'
+    // The numbered MENU and the jobs reachable only from it.
+    | 'menu'
+    | 'menu_logo'
+    | 'edit_client_pick'
+    | 'edit_client_name'
+    | 'edit_client_address'
   draft?: Draft
   // The numbered client list as shown, so a reply of "2" resolves to the same
   // person even if a quote was saved in between and reordered the list.
@@ -246,6 +252,12 @@ export type ConvoState = {
   // For 'disambiguate': the original message, replayed down whichever path the
   // user picks so they never have to type it twice.
   pending_message?: string
+  // Set when a profile step was re-entered from the menu rather than reached
+  // during first-time setup: the same questions are asked, but the chain ends
+  // in a confirmation instead of carrying on into a quote.
+  edit?: 'business' | 'bank'
+  // For the client-edit flow: which saved client is being changed.
+  client_id?: string
 }
 
 export async function setConvoState(userId: string, state: ConvoState | null): Promise<void> {

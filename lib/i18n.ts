@@ -86,6 +86,17 @@ export type StringKey =
   // listing
   | 'quotes_none'
   | 'quotes_header'
+  // menu
+  | 'menu'
+  | 'menu_invalid'
+  | 'menu_logo_ask'
+  | 'menu_logo_again'
+  | 'profile_updated'
+  | 'edit_client_none'
+  | 'edit_client_pick'
+  | 'edit_client_name'
+  | 'edit_client_address'
+  | 'edit_client_saved'
   // generic
   | 'help'
   | 'not_understood'
@@ -152,9 +163,22 @@ const en: Strings = {
   quotes_none: "You haven't made any quotes yet.",
   quotes_header: 'Your last quotes:',
 
+  menu:
+    'What would you like to do?\n\n1  New quote\n2  My recent quotes\n3  Send a new logo\n4  My business details\n5  My banking details\n6  A client\'s details\n7  Bills I need to pay\n8  Dashboard login code\n9  Change language\n\nReply with a number.',
+  menu_invalid: "That's not one of the options. Reply with a number from 1 to 9.",
+  menu_logo_ask:
+    "Send me your new logo as a picture and I'll put it on every quote from now on.\n\nChanged your mind? Reply CANCEL.",
+  menu_logo_again: "That wasn't a picture. Send the logo as an image, or reply CANCEL.",
+  profile_updated: 'Updated. Your quotes will use these details from now on.',
+  edit_client_none: "You don't have any saved clients yet. They get saved automatically the first time you quote them.",
+  edit_client_pick: 'Which client?\n\n{list}\n\nReply with a number, or type their name.',
+  edit_client_name: "{customer} — what should their name be?\n\nCorrect as is? Reply SKIP.",
+  edit_client_address: "And their address?\n\nLeave it as it is? Reply SKIP.",
+  edit_client_saved: 'Saved — {customer}.',
+
   help:
-    'Here\'s what I can do:\n\n• Send me a job → I make a quote\n• Send me a bill → I track it and remind you\n• QUOTES — your recent quotes\n• BILLS — what you owe\n• LOGIN — get your dashboard code\n• LANGUAGE — change language\n• STOP — pause messages',
-  not_understood: "I didn't quite get that. Reply HELP to see what I can do.",
+    'Here\'s what I can do:\n\n• MENU — everything, as a numbered list\n• Send me a job → I make a quote\n• Send me a bill → I track it and remind you\n• QUOTES — your recent quotes\n• BILLS — what you owe\n• LOGIN — get your dashboard code\n• LANGUAGE — change language\n• STOP — pause messages',
+  not_understood: "I didn't quite get that. Reply MENU to see what I can do.",
   save_failed: "Something went wrong saving that. Please send it again.",
   cancelled: 'Cancelled.',
 }
@@ -219,9 +243,22 @@ const zu: Strings = {
   quotes_none: 'Awukakenzi ama-quote okwamanje.',
   quotes_header: 'Ama-quote akho akamuva:',
 
+  menu:
+    'Ufuna ukwenzani?\n\n1  I-quote entsha\n2  Ama-quote ami akamuva\n3  Thumela ilogo entsha\n4  Imininingwane yebhizinisi lami\n5  Imininingwane yebhange lami\n6  Imininingwane yekhasimende\n7  Amabhili okumele ngiwakhokhe\n8  Ikhodi yokungena ku-dashboard\n9  Shintsha ulimi\n\nPhendula ngenombolo.',
+  menu_invalid: 'Leyo ayikho kulezi zinketho. Phendula ngenombolo kusukela ku-1 kuya ku-9.',
+  menu_logo_ask:
+    'Ngithumele ilogo yakho entsha njengesithombe, ngizoyifaka kuwo wonke ama-quote kusukela manje.\n\nUshintshe umqondo? Phendula ngo-CANCEL.',
+  menu_logo_again: 'Leso bekungesona isithombe. Thumela ilogo njengesithombe, noma uphendule ngo-CANCEL.',
+  profile_updated: 'Kubuyekeziwe. Ama-quote akho azosebenzisa le mininingwane kusukela manje.',
+  edit_client_none: 'Awunawo amakhasimende agciniwe okwamanje. Agcinwa ngokuzenzakalela uma uwathumelela i-quote okokuqala.',
+  edit_client_pick: 'Iliphi ikhasimende?\n\n{list}\n\nPhendula ngenombolo, noma ubhale igama labo.',
+  edit_client_name: 'U-{customer} — kufanele libe ngubani igama labo?\n\nLilungile njengoba linjalo? Phendula ngo-SKIP.',
+  edit_client_address: 'Lithini ikheli labo?\n\nUfuna ukulishiya njengoba linjalo? Phendula ngo-SKIP.',
+  edit_client_saved: 'Kugciniwe — {customer}.',
+
   help:
-    'Nakhu engingakwenza:\n\n• Ngithumele umsebenzi → ngenza i-quote\n• Ngithumele ibhili → ngiyaligcina ngikukhumbuze\n• QUOTES — ama-quote akho akamuva\n• BILLS — okumele ukukhokhe\n• LOGIN — thola ikhodi ye-dashboard\n• LANGUAGE — shintsha ulimi\n• STOP — misa imiyalezo',
-  not_understood: 'Angizwanga kahle. Phendula ngo-HELP ubone engingakwenza.',
+    'Nakhu engingakwenza:\n\n• MENU — konke, ohlwini olunezinombolo\n• Ngithumele umsebenzi → ngenza i-quote\n• Ngithumele ibhili → ngiyaligcina ngikukhumbuze\n• QUOTES — ama-quote akho akamuva\n• BILLS — okumele ukukhokhe\n• LOGIN — thola ikhodi ye-dashboard\n• LANGUAGE — shintsha ulimi\n• STOP — misa imiyalezo',
+  not_understood: 'Angizwanga kahle. Phendula ngo-MENU ubone engingakwenza.',
   save_failed: 'Kube nenkinga ekugcineni lokho. Sicela ukuthumele futhi.',
   cancelled: 'Kukhanseliwe.',
 }
@@ -286,9 +323,22 @@ const af: Strings = {
   quotes_none: 'Jy het nog geen kwotasies gemaak nie.',
   quotes_header: 'Jou laaste kwotasies:',
 
+  menu:
+    'Wat wil jy doen?\n\n1  Nuwe kwotasie\n2  My onlangse kwotasies\n3  Stuur \'n nuwe logo\n4  My besigheidsbesonderhede\n5  My bankbesonderhede\n6  \'n Kliënt se besonderhede\n7  Rekeninge wat ek moet betaal\n8  Dashboard-inteikenkode\n9  Verander taal\n\nAntwoord met \'n nommer.',
+  menu_invalid: 'Dit is nie een van die opsies nie. Antwoord met \'n nommer van 1 tot 9.',
+  menu_logo_ask:
+    'Stuur my jou nuwe logo as \'n prent, dan sit ek dit voortaan op elke kwotasie.\n\nVan plan verander? Antwoord CANCEL.',
+  menu_logo_again: 'Dit was nie \'n prent nie. Stuur die logo as \'n prent, of antwoord CANCEL.',
+  profile_updated: 'Opgedateer. Jou kwotasies gebruik voortaan hierdie besonderhede.',
+  edit_client_none: 'Jy het nog geen gestoorde kliënte nie. Hulle word outomaties gestoor die eerste keer wat jy vir hulle kwoteer.',
+  edit_client_pick: 'Watter kliënt?\n\n{list}\n\nAntwoord met \'n nommer, of tik hulle naam.',
+  edit_client_name: '{customer} — wat moet hulle naam wees?\n\nReg soos dit is? Antwoord SKIP.',
+  edit_client_address: 'En hulle adres?\n\nLos dit soos dit is? Antwoord SKIP.',
+  edit_client_saved: 'Gestoor — {customer}.',
+
   help:
-    'Dis wat ek kan doen:\n\n• Stuur my \'n werk → ek maak \'n kwotasie\n• Stuur my \'n rekening → ek hou dit by en herinner jou\n• QUOTES — jou onlangse kwotasies\n• BILLS — wat jy skuld\n• LOGIN — kry jou dashboard-kode\n• LANGUAGE — verander taal\n• STOP — stop boodskappe',
-  not_understood: 'Ek het dit nie heeltemal verstaan nie. Antwoord HELP om te sien wat ek kan doen.',
+    'Dis wat ek kan doen:\n\n• MENU — alles, as \'n genommerde lys\n• Stuur my \'n werk → ek maak \'n kwotasie\n• Stuur my \'n rekening → ek hou dit by en herinner jou\n• QUOTES — jou onlangse kwotasies\n• BILLS — wat jy skuld\n• LOGIN — kry jou dashboard-kode\n• LANGUAGE — verander taal\n• STOP — stop boodskappe',
+  not_understood: 'Ek het dit nie heeltemal verstaan nie. Antwoord MENU om te sien wat ek kan doen.',
   save_failed: 'Iets het verkeerd geloop met stoor. Stuur dit asseblief weer.',
   cancelled: 'Gekanselleer.',
 }

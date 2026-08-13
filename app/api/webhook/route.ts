@@ -5,10 +5,11 @@ import { extractBillFromText, extractBillFromPDF, extractBillFromImage, Extracte
 import { sendWhatsApp, sendWhatsAppTemplate, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation, formatReminderConfirmation } from '@/lib/whatsapp'
 import {
   handleConvoStep, pendingDisambiguation, startLanguagePicker, startGuidedQuote, startQuote, askBillOrQuote,
-  CONVO_USER_COLUMNS, type ConvoUser,
+  showMenu, CONVO_USER_COLUMNS, type ConvoUser,
 } from '@/lib/convo'
 import { setConvoState } from '@/lib/quotes'
-import { t, toLang, fmtRand } from '@/lib/i18n'
+import { recentQuotesMessage, pendingBillsMessage, issueLoginCode } from '@/lib/replies'
+import { t, toLang } from '@/lib/i18n'
 
 // One account this inbound message should be applied to. Normally there's exactly
 // one (the sender's own account, or the single account that trusts them) — but the
@@ -32,9 +33,11 @@ const WELCOME_MESSAGE = `👋 Welcome to *Sorted* — I help you send profession
 
 Reply *QUOTE* and I'll walk you through it. I only ask for your business details once, then every quote after that takes under a minute.
 
-Text *HELP* any time to see everything I can do.`
+Text *MENU* any time for a numbered list of everything I can do.`
 
 const HELP_MESSAGE = `Here's what I can do:
+
+📋 *MENU* — everything below as a numbered list, so you don't have to remember any of it.
 
 *Sending quotes*
 🧾 *QUOTE* — I'll ask you three quick questions and send back a PDF quote with your logo, ready to forward to your client.
@@ -108,8 +111,22 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Handles LOGIN / HELP / BILLS / QUOTES / LANGUAGE / STOP keywords. Returns true
-// if the message was a command and has been fully dealt with.
+/** Creates the account for a number we've never heard from. Null if the insert failed. */
+async function createUser(from: string): Promise<ConvoUser | null> {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .insert({ whatsapp_number: from })
+    .select(CONVO_USER_COLUMNS)
+    .single()
+  if (error || !data) {
+    console.error('User insert failed', error)
+    return null
+  }
+  return data as ConvoUser
+}
+
+// Handles MENU / LOGIN / HELP / BILLS / QUOTES / LANGUAGE / STOP keywords. Returns
+// true if the message was a command and has been fully dealt with.
 //
 // `user` is the sender's own account (null if they've never messaged before, or
 // if they're only a trusted sender on someone else's account). It's used for
@@ -130,25 +147,29 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
     return true
   }
 
+  // "MENU" — the numbered list of everything, and the way in for anyone who
+  // doesn't know the keywords. Recognised in all three languages: someone who
+  // can't find their way around is exactly who reaches for this.
+  if (cmd === 'menu' || cmd === 'opsies' || cmd === 'imenu' || cmd === 'i-menu') {
+    const target = user ?? (await createUser(from))
+    if (!target) {
+      await sendWhatsApp(from, t(lang, 'save_failed'))
+      return true
+    }
+    await showMenu(target)
+    return true
+  }
+
   // "QUOTE" — the main way in. Starts the guided quote, asking only for the
   // setup this number hasn't already given. Checked before "QUOTES" (plural,
   // the history list) so the two never collide.
   if (cmd === 'quote' || cmd === 'new quote' || cmd === 'kwotasie' || cmd === 'iquote' || cmd === 'i-quote') {
-    let target = user
+    // First contact via QUOTE — create the account here rather than letting it
+    // fall through to extraction, which has nothing to extract.
+    const target = user ?? (await createUser(from))
     if (!target) {
-      // First contact via QUOTE — create the account here rather than letting
-      // it fall through to extraction, which has nothing to extract.
-      const { data: created, error } = await supabaseAdmin
-        .from('users')
-        .insert({ whatsapp_number: from })
-        .select(CONVO_USER_COLUMNS)
-        .single()
-      if (error || !created) {
-        console.error('User insert failed on QUOTE', error)
-        await sendWhatsApp(from, t(lang, 'save_failed'))
-        return true
-      }
-      target = created as ConvoUser
+      await sendWhatsApp(from, t(lang, 'save_failed'))
+      return true
     }
     await startGuidedQuote(target)
     return true
@@ -156,58 +177,12 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
 
   // "QUOTES" — the money-in counterpart to BILLS.
   if (cmd === 'quotes' || cmd === 'kwotasies' || cmd === 'amaquote') {
-    if (!user) {
-      await sendWhatsApp(from, t(lang, 'quotes_none'))
-      return true
-    }
-    const { data: quotes } = await supabaseAdmin
-      .from('quotes')
-      .select('number, total, status, customers(name)')
-      .eq('user_id', user.id)
-      .neq('status', 'cancelled')
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    if (!quotes || quotes.length === 0) {
-      await sendWhatsApp(from, t(lang, 'quotes_none'))
-      return true
-    }
-    const lines = quotes.map(q => {
-      // Supabase renders a foreign-key join as an array, not an object.
-      const joined = q.customers as unknown
-      const customer = Array.isArray(joined) ? joined[0]?.name : (joined as { name?: string } | null)?.name
-      const who = customer ? ` — ${customer}` : ''
-      return `• ${q.number}${who} — ${fmtRand(Number(q.total))} (${q.status})`
-    })
-    await sendWhatsApp(from, `${t(lang, 'quotes_header')}\n\n${lines.join('\n')}`)
+    await sendWhatsApp(from, await recentQuotesMessage(user?.id ?? null, lang))
     return true
   }
 
-  // "LOGIN" — generates and sends a dashboard OTP. WhatsApp only allows free-form
-  // text replies to numbers that messaged us first, so the OTP has to be requested
-  // this way rather than pushed out when someone visits the website.
   if (cmd === 'login') {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString()
-    const expires = new Date(Date.now() + 5 * 60 * 1000).toISOString()
-
-    let { error } = await supabaseAdmin
-      .from('users')
-      .upsert({ whatsapp_number: from, otp, otp_expires_at: expires, otp_attempts: 0 }, { onConflict: 'whatsapp_number' })
-
-    // Retry without otp_attempts in case the column migration hasn't run yet —
-    // a schema lag must never break login (see the bills.unconfirmed incident).
-    if (error) {
-      ({ error } = await supabaseAdmin
-        .from('users')
-        .upsert({ whatsapp_number: from, otp, otp_expires_at: expires }, { onConflict: 'whatsapp_number' }))
-    }
-    if (error) {
-      console.error('OTP save failed', error)
-      await sendWhatsApp(from, `Something went wrong generating your code — please try again in a minute.`)
-      return true
-    }
-
-    await sendWhatsApp(from, `Your Sorted login code is *${otp}*\n\nExpires in 5 minutes.`)
+    await sendWhatsApp(from, await issueLoginCode(from))
     return true
   }
 
@@ -221,28 +196,7 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
 
   // "BILLS" — list the sender's own pending bills without needing the dashboard
   if (cmd === 'bills') {
-    const { data: user } = await supabaseAdmin.from('users').select('id').eq('whatsapp_number', from).single()
-    if (!user) {
-      await sendWhatsApp(from, `You don't have any bills with me yet. Forward an invoice or type one (e.g. "pay ballet R850 by Friday") to get started.`)
-      return true
-    }
-    const { data: bills } = await supabaseAdmin
-      .from('bills')
-      .select('payee, amount, due_date')
-      .eq('user_id', user.id)
-      .in('status', ['pending', 'overdue'])
-      .order('due_date', { ascending: true, nullsFirst: false })
-
-    if (!bills || bills.length === 0) {
-      await sendWhatsApp(from, `Nothing pending — you're all sorted! ✅`)
-      return true
-    }
-    const total = bills.reduce((s, b) => s + Number(b.amount), 0)
-    const lines = bills.map(b => {
-      const due = b.due_date ? ` (due ${new Date(b.due_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })})` : ''
-      return `• R${Number(b.amount).toFixed(2)} — ${b.payee}${due}`
-    })
-    await sendWhatsApp(from, `You have ${bills.length} pending bill${bills.length > 1 ? 's' : ''} totalling *R${total.toFixed(2)}*:\n\n${lines.join('\n')}\n\nPay them from your dashboard:\n${process.env.NEXT_PUBLIC_APP_URL}`)
+    await sendWhatsApp(from, await pendingBillsMessage(user?.id ?? null))
     return true
   }
 
@@ -336,16 +290,9 @@ async function processMessage(message: InboundMessage) {
     } else {
       if (!sender) {
         isNewUser = true
-        const { data: created, error: userError } = await supabaseAdmin
-          .from('users')
-          .insert({ whatsapp_number: from })
-          .select(CONVO_USER_COLUMNS)
-          .single()
-        if (userError || !created) {
-          console.error('User insert failed', userError)
-          return
-        }
-        sender = created as ConvoUser
+        const created = await createUser(from)
+        if (!created) return
+        sender = created
       }
       targets = [{ userId: sender.id, sentBy: null, label: null }]
     }
