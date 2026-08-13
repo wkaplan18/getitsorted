@@ -30,6 +30,11 @@ export type SiteCopy = {
     titleTop: string
     titleAccent: string
     body: string
+    // The WhatsApp number, spelled out as an instruction. Split into parts
+    // rather than one interpolated sentence because the number itself is set
+    // in bigger type — and because QUOTE is a trigger word the webhook
+    // matches, so it is never translated.
+    number: { before: string; word: string; middle: string; note: string }
     ctaPrimary: string
     ctaSecondary: string
     chips: string[]
@@ -104,6 +109,12 @@ const en: SiteCopy = {
     titleAccent: 'straight from WhatsApp.',
     body:
       'Answer three questions on WhatsApp. Get back a branded PDF quote with your logo, your banking details, and a link you forward to your client. Under a minute, every time.',
+    number: {
+      before: 'Text',
+      word: 'QUOTE',
+      middle: 'to',
+      note: "Free. That one message starts your first quote — your logo, your banking details, your client seeing a real company.",
+    },
     ctaPrimary: 'Send your first quote →',
     ctaSecondary: 'See how it works',
     chips: ['No app to download', 'English & isiZulu', 'We make your logo', 'Your banking details on every quote'],
@@ -212,9 +223,15 @@ const zu: SiteCopy = {
   hero: {
     eyebrow: 'Yabo bonke ababhali bamanzi, ugesi, abapendi nawo wonke umuntu ozisebenzayo',
     titleTop: 'Thumela i-quote',
-    titleAccent: 'ngqo nge-WhatsApp.',
+    titleAccent: 'nge-WhatsApp.',
     body:
       'Phendula imibuzo emithathu ku-WhatsApp. Uthola i-PDF quote esezingeni eliphezulu enelogo yakho, imininingwane yebhange lakho, nesixhumanisi osidlulisela ikhasimende lakho. Ngaphansi komzuzu, njalo.',
+    number: {
+      before: 'Thumela u-',
+      word: 'QUOTE',
+      middle: 'ku-',
+      note: 'Mahhala. Lowo mlayezo owodwa uqala i-quote yakho yokuqala — ilogo yakho, imininingwane yebhange lakho, ikhasimende lakho libona inkampani yangempela.',
+    },
     ctaPrimary: 'Thumela i-quote yakho yokuqala →',
     ctaSecondary: 'Bona ukuthi kusebenza kanjani',
     chips: ['Ayikho i-app oyilandayo', 'IsiNgisi nesiZulu', 'Sikwenzela ilogo', 'Imininingwane yebhange kuwo wonke ama-quote'],

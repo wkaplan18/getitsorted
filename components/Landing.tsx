@@ -30,6 +30,25 @@ const WA_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').replace(/\D/g,
 // prefilling the WhatsApp box with a localised word would start no conversation.
 const WA_QUOTE_LINK = WA_NUMBER ? `https://wa.me/${WA_NUMBER}?text=quote` : '/app'
 
+/**
+ * The number as a human reads it off a page: +27 82 898 6780.
+ *
+ * Half this audience will type it into WhatsApp by hand rather than tap a
+ * link — grouped digits are what makes that possible. Anything that isn't a
+ * recognisable SA mobile number (including the unset placeholder in a local
+ * .env) returns null, and the hero drops the number rather than printing
+ * something wrong on the one line that has to be trusted.
+ */
+function displayNumber(digits: string): string | null {
+  if (digits.length < 10) return null
+  if (digits.startsWith('27') && digits.length === 11) {
+    return `+27 ${digits.slice(2, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`
+  }
+  return `+${digits}`
+}
+
+const WA_DISPLAY_NUMBER = displayNumber(WA_NUMBER)
+
 export default function Landing({ lang }: { lang: SiteLang }) {
   const t = siteCopy(lang)
   return (
@@ -112,11 +131,23 @@ export default function Landing({ lang }: { lang: SiteLang }) {
           .hero-float { display: none !important; }
         }
 
+        /* The number card is the one thing on the page a visitor is asked to
+           act on without tapping, so it lifts on hover like the buttons do and
+           keeps a visible focus ring for keyboard users. */
+        .hero-number { transition: transform 180ms cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 180ms ease; }
+        .hero-number:hover { transform: translateY(-2px); box-shadow: 0 1px 2px rgba(15,23,42,0.05), 0 18px 34px -18px rgba(180,83,10,0.55); }
+        .hero-number:active { transform: translateY(0); }
+        .hero-number:focus-visible { outline: 2px solid #B4530A; outline-offset: 3px; }
+        @media (prefers-reduced-motion: reduce) { .hero-number { transition: none; } }
+
         /* At handset widths the four proof chips each claim their own line and
            push the phone a screenful down. Shrinking them lets two share a row
            without touching the copy. */
         @media (max-width: 480px) {
           .hero-chips span { font-size: 11px !important; padding: 5px 10px !important; }
+          /* The grouped number is the widest unbreakable run in the hero —
+             it must not force the card to scroll sideways on a 360px screen. */
+          .hero-number-digits { font-size: 21px !important; }
           /* Logo + language toggle + CTA is three things in a 360px row —
              claw back the horizontal padding rather than dropping any of them. */
           .nav-inner { padding: 0 16px !important; }
@@ -162,9 +193,45 @@ export default function Landing({ lang }: { lang: SiteLang }) {
               <span style={{ color: '#B4530A' }}>{t.hero.titleAccent}</span>
             </h1>
 
-            <p style={{ fontSize: 18, color: '#64748b', lineHeight: 1.7, margin: '0 0 32px', maxWidth: 440 }}>
+            <p style={{ fontSize: 18, color: '#64748b', lineHeight: 1.7, margin: '0 0 28px', maxWidth: 440 }}>
               {t.hero.body}
             </p>
+
+            {/* The instruction, spelled out: this word, to this number. The
+                buttons below only work for someone already on their phone —
+                this works for someone reading on a laptop, or seeing the page
+                over someone's shoulder, which is how this spreads. */}
+            <a
+              href={WA_QUOTE_LINK}
+              className="hero-number"
+              style={{
+                display: 'block',
+                maxWidth: 440,
+                marginBottom: 28,
+                padding: '18px 22px',
+                background: 'rgba(255,255,255,0.9)',
+                border: '1px solid #F0DCC2',
+                borderRadius: 16,
+                textDecoration: 'none',
+                boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 12px 28px -18px rgba(180,83,10,0.45)',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                <span style={{ fontSize: 17, fontWeight: 600, color: '#334155' }}>{t.hero.number.before}</span>
+                <span style={{ fontSize: 17, fontWeight: 800, color: '#B4530A', letterSpacing: '0.02em' }}>{t.hero.number.word}</span>
+                {WA_DISPLAY_NUMBER ? (
+                  <>
+                    <span style={{ fontSize: 17, fontWeight: 600, color: '#334155' }}>{t.hero.number.middle}</span>
+                    <span className="hero-number-digits" style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                      {WA_DISPLAY_NUMBER}
+                    </span>
+                  </>
+                ) : null}
+              </span>
+              <span style={{ display: 'block', marginTop: 8, fontSize: 14, color: '#64748b', lineHeight: 1.6 }}>
+                {t.hero.number.note}
+              </span>
+            </a>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 36 }}>
               <a href={WA_QUOTE_LINK} className="btn" style={{ background: '#B4530A', color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 16, padding: '14px 24px', borderRadius: 12, boxShadow: '0 1px 2px rgba(15,23,42,0.1), 0 10px 24px -10px rgba(180,83,10,0.6)' }}>
