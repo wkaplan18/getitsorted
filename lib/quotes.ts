@@ -328,6 +328,53 @@ export function renderLines(draft: Draft, lang: Lang, vatRegistered: boolean): s
   return lines.join('\n')
 }
 
+/**
+ * The message the tradesperson forwards to his client, and nothing else.
+ *
+ * Sent as its own WhatsApp message, last, so a long-press → forward carries
+ * exactly this and none of the conversation around it. Every word is written
+ * for the client to read: it opens with the business, not with "your quote is
+ * ready", and it never says "you" to someone who isn't the customer.
+ *
+ * This is the first thing most of these clients will see from the business, so
+ * it carries the same details as the letterhead on the PDF — who this is, what
+ * they do, and how to reach them.
+ */
+export function renderForwardCard(opts: {
+  business: string
+  trade?: string | null
+  ownerName?: string | null
+  phone?: string | null
+  docType: DocType
+  vatRegistered: boolean
+  number: string
+  customer: string | null
+  total: number
+  link: string
+  lang: Lang
+}): string {
+  const { lang } = opts
+  const lines: string[] = [`*${opts.business}*`]
+
+  // Trade, name and number on one line under the business, exactly as they sit
+  // under the logo on the PDF. Any of them may be missing.
+  const details = [opts.trade, opts.ownerName].filter(Boolean).join(' · ')
+  if (details) lines.push(details)
+  if (opts.phone) lines.push(opts.phone)
+
+  // Only a registered vendor may head a document "Tax Invoice" (VAT Act s20).
+  const docWord = opts.docType === 'invoice'
+    ? t(lang, opts.vatRegistered ? 'doc_tax_invoice' : 'doc_invoice')
+    : t(lang, 'doc_quotation')
+
+  lines.push('', `${docWord} ${opts.number}`)
+  if (opts.customer) lines.push(`${t(lang, 'fwd_for')}: ${opts.customer}`)
+  lines.push(`${t(lang, 'fwd_total')}: *${fmtRand(opts.total)}*`)
+  lines.push('', t(lang, 'fwd_open'), opts.link)
+
+  return lines.join('\n')
+}
+
 // ---------------------------------------------------------------------------
 // Persistence
 // ---------------------------------------------------------------------------

@@ -16,7 +16,7 @@ import { applyQuoteEdit, type ExtractedBill } from './claude'
 import { resolveBank, cleanAccountNumber } from './banks'
 import {
   renderDraft, renderLines, saveQuote, setConvoState, quoteUrl,
-  recentCustomers, findCustomer, normaliseName,
+  recentCustomers, findCustomer, normaliseName, renderForwardCard,
   invoiceableQuotes, createInvoiceFromQuote,
   type ConvoState, type Draft,
 } from './quotes'
@@ -220,11 +220,21 @@ export async function handleConvoStep(
       }
 
       await setConvoState(user.id, null)
+
+      // Same two-message shape as a new quote: what happened, then the message
+      // he forwards. The client should never receive "same figures as QUO-0002".
       await sendWhatsApp(from, t(lang, 'invoice_sent', {
         number: created.quote.number,
-        link: quoteUrl(created.quote.public_token),
         customer: picked.name,
         source: picked.number,
+      }))
+      await sendWhatsApp(from, forwardCardFor(user, {
+        docType: 'invoice',
+        number: created.quote.number,
+        customer: picked.name || null,
+        total: Number(created.quote.total),
+        token: created.quote.public_token,
+        lang,
       }))
       return true
     }
@@ -735,19 +745,60 @@ async function sendQuote(user: ConvoUser, draft: Draft, lang: Lang): Promise<voi
 
   await setConvoState(user.id, null)
 
-  const link = quoteUrl(saved.quote.public_token)
-
-  // One message, not three. The tradesperson is paying R22–30/GB on a small
-  // bundle, and so is the customer he forwards this to. The figures are
-  // included so he can eyeball what was parsed before it leaves his phone.
+  // Two messages, and the split is the point. The first is between Sorted and
+  // the tradesperson — the figures, so he can eyeball what was parsed before it
+  // leaves his phone. The second is the one he forwards, and it has to arrive
+  // at the client with nothing of this conversation attached to it.
   await sendWhatsApp(
     from,
     [
       renderLines(draft, lang, isVatRegistered(user)),
-      t(lang, 'quote_sent', { number: saved.quote.number, link }),
+      t(lang, 'quote_sent', { number: saved.quote.number }),
       t(lang, 'quote_forward', { customer: draft.customer ?? 'your customer' }),
     ].join('\n\n'),
   )
+
+  await sendWhatsApp(from, forwardCardFor(user, {
+    docType: 'quote',
+    number: saved.quote.number,
+    customer: draft.customer,
+    total: Number(saved.quote.total),
+    token: saved.quote.public_token,
+    lang,
+  }))
+}
+
+/**
+ * The forwardable message for one document, filled in from the user's profile.
+ *
+ * Kept here rather than at each call site so the quote flow and the invoice
+ * flow can never drift into presenting the same business two different ways.
+ */
+function forwardCardFor(
+  user: ConvoUser,
+  doc: {
+    docType: 'quote' | 'invoice'
+    number: string
+    customer: string | null
+    total: number
+    token: string
+    lang: Lang
+  },
+): string {
+  return renderForwardCard({
+    business: user.business_name ?? user.name ?? 'Sorted',
+    trade: user.trade,
+    ownerName: user.name,
+    // Stored bare (27821234567) — printed the way a client would dial it.
+    phone: user.whatsapp_number ? `+${user.whatsapp_number}` : null,
+    docType: doc.docType,
+    vatRegistered: isVatRegistered(user),
+    number: doc.number,
+    customer: doc.customer,
+    total: doc.total,
+    link: quoteUrl(doc.token),
+    lang: doc.lang,
+  })
 }
 
 // ---------------------------------------------------------------------------

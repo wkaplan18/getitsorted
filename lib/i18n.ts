@@ -68,6 +68,13 @@ export type StringKey =
   | 'quote_updated'
   | 'quote_sent'
   | 'quote_forward'
+  // the forwardable card — written for the CLIENT to read, not the tradesperson
+  | 'doc_quotation'
+  | 'doc_invoice'
+  | 'doc_tax_invoice'
+  | 'fwd_for'
+  | 'fwd_total'
+  | 'fwd_open'
   | 'quote_cancelled'
   | 'quote_no_items'
   | 'quote_needs_profile'
@@ -143,9 +150,16 @@ const en: Strings = {
   quote_total: 'TOTAL',
   quote_confirm: 'Reply SEND to make the PDF, or tell me what to change.',
   quote_updated: 'Updated:',
-  quote_sent: '{number} ready 👇\n{link}',
+  quote_sent: '{number} is ready 👇',
   quote_forward:
-    "Forward that to {customer}. They can view it and pay you right there.\n\nI'll tell you the moment they open it or pay.",
+    "Forward the message below to {customer} — it's written for them, so just press and forward.\n\nI'll tell you the moment they open it or pay.",
+
+  doc_quotation: 'Quotation',
+  doc_invoice: 'Invoice',
+  doc_tax_invoice: 'Tax Invoice',
+  fwd_for: 'For',
+  fwd_total: 'Total',
+  fwd_open: 'View it, download the PDF or pay here:',
   quote_cancelled: 'Quote cancelled, nothing sent.',
   quote_no_items: "I couldn't find any prices in that. Tell me what you're charging, like \"paint 3 rooms R850 each\".",
   quote_needs_profile: "I need your business name first before I can make a quote.",
@@ -171,7 +185,7 @@ const en: Strings = {
   menu_invalid: "That's not one of the options. Reply with a number from 1 to 10.",
   invoice_none: "You haven't made any quotes yet — an invoice is made from one.",
   invoice_pick: 'Which quote should I invoice?\n\n{list}\n\nReply with a number.',
-  invoice_sent: '{number} ready 👇\n{link}\n\nSend that to {customer} — same figures as {source}, now as an invoice.',
+  invoice_sent: '{number} is ready 👇 — same figures as {source}, now as an invoice.\n\nForward the message below to {customer}.',
   menu_logo_ask:
     "Send me your new logo as a picture and I'll put it on every quote from now on.\n\nChanged your mind? Reply CANCEL.",
   menu_logo_again: "That wasn't a picture. Send the logo as an image, or reply CANCEL.",
@@ -226,9 +240,16 @@ const zu: Strings = {
   quote_total: 'ISAMBA',
   quote_confirm: 'Phendula ngo-SEND ukuze ngenze i-PDF, noma ungitshele ukuthi ngishintshe ini.',
   quote_updated: 'Kubuyekeziwe:',
-  quote_sent: 'I-{number} isilungile 👇\n{link}',
+  quote_sent: 'I-{number} isilungile 👇',
   quote_forward:
-    'Dlulisela lokho ku-{customer}. Bangayibona bakukhokhele khona lapho.\n\nNgizokutshela ngokushesha uma beyivula noma bekhokha.',
+    'Dlulisela umlayezo ongezansi ku-{customer} — ubhalelwe bona, ngakho cindezela nje udlulisele.\n\nNgizokutshela ngokushesha uma beyivula noma bekhokha.',
+
+  doc_quotation: 'I-Quote',
+  doc_invoice: 'I-Invoice',
+  doc_tax_invoice: 'I-Tax Invoice',
+  fwd_for: 'Eyaka',
+  fwd_total: 'Isamba',
+  fwd_open: 'Yibuke, landa i-PDF noma ukhokhe lapha:',
   quote_cancelled: 'I-quote ikhanseliwe, akuthunyelwanga lutho.',
   quote_no_items: 'Angitholanga zintengo lapho. Ngitshele ukuthi ubiza malini, njenge "penda amakamelo ama-3 R850 ngalinye".',
   quote_needs_profile: 'Ngidinga igama lebhizinisi lakho kuqala ngaphambi kokwenza i-quote.',
@@ -254,7 +275,7 @@ const zu: Strings = {
   menu_invalid: 'Leyo ayikho kulezi zinketho. Phendula ngenombolo kusukela ku-1 kuya ku-10.',
   invoice_none: 'Awukakenzi ama-quote — i-invoice yenziwa nge-quote.',
   invoice_pick: 'Iyiphi i-quote ofuna ngiyenze i-invoice?\n\n{list}\n\nPhendula ngenombolo.',
-  invoice_sent: 'I-{number} isilungile 👇\n{link}\n\nThumela lokho ku-{customer} — amanani afanayo ne-{source}, manje kuyi-invoice.',
+  invoice_sent: 'I-{number} isilungile 👇 — amanani afanayo ne-{source}, manje kuyi-invoice.\n\nDlulisela umlayezo ongezansi ku-{customer}.',
   menu_logo_ask:
     'Ngithumele ilogo yakho entsha njengesithombe, ngizoyifaka kuwo wonke ama-quote kusukela manje.\n\nUshintshe umqondo? Phendula ngo-CANCEL.',
   menu_logo_again: 'Leso bekungesona isithombe. Thumela ilogo njengesithombe, noma uphendule ngo-CANCEL.',
@@ -309,9 +330,16 @@ const af: Strings = {
   quote_total: 'TOTAAL',
   quote_confirm: 'Antwoord SEND om die PDF te maak, of sê my wat om te verander.',
   quote_updated: 'Opgedateer:',
-  quote_sent: '{number} gereed 👇\n{link}',
+  quote_sent: '{number} is gereed 👇',
   quote_forward:
-    'Stuur dit aan vir {customer}. Hulle kan dit sien en jou daar en dan betaal.\n\nEk laat jou dadelik weet wanneer hulle dit oopmaak of betaal.',
+    'Stuur die boodskap hieronder aan vir {customer} — dit is vir hulle geskryf, druk en stuur dit net aan.\n\nEk laat jou dadelik weet wanneer hulle dit oopmaak of betaal.',
+
+  doc_quotation: 'Kwotasie',
+  doc_invoice: 'Faktuur',
+  doc_tax_invoice: 'BTW-faktuur',
+  fwd_for: 'Vir',
+  fwd_total: 'Totaal',
+  fwd_open: 'Sien dit, laai die PDF af of betaal hier:',
   quote_cancelled: 'Kwotasie gekanselleer, niks gestuur nie.',
   quote_no_items: 'Ek kon geen pryse daarin kry nie. Sê my wat jy vra, soos "verf 3 kamers R850 elk".',
   quote_needs_profile: 'Ek kort eers jou besigheidsnaam voor ek \'n kwotasie kan maak.',
@@ -337,7 +365,7 @@ const af: Strings = {
   menu_invalid: 'Dit is nie een van die opsies nie. Antwoord met \'n nommer van 1 tot 10.',
   invoice_none: 'Jy het nog geen kwotasies nie — \'n faktuur word van een gemaak.',
   invoice_pick: 'Watter kwotasie moet ek faktureer?\n\n{list}\n\nAntwoord met \'n nommer.',
-  invoice_sent: '{number} gereed 👇\n{link}\n\nStuur dit aan {customer} — dieselfde bedrae as {source}, nou as \'n faktuur.',
+  invoice_sent: '{number} is gereed 👇 — dieselfde bedrae as {source}, nou as \'n faktuur.\n\nStuur die boodskap hieronder aan vir {customer}.',
   menu_logo_ask:
     'Stuur my jou nuwe logo as \'n prent, dan sit ek dit voortaan op elke kwotasie.\n\nVan plan verander? Antwoord CANCEL.',
   menu_logo_again: 'Dit was nie \'n prent nie. Stuur die logo as \'n prent, of antwoord CANCEL.',
