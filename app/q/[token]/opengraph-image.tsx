@@ -97,7 +97,7 @@ export default async function Image({ params }: { params: Promise<{ token: strin
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid #EFE2D0', paddingTop: 26 }}>
           <div style={{ fontSize: 26, color: MUTED }}>View it or download the PDF</div>
-          <div style={{ fontSize: 22, color: '#A9A79C' }}>Made with Sorted</div>
+          <div style={{ fontSize: 22, color: '#A9A79C' }}>Made with getitSorted.co.za</div>
         </div>
       </div>
     ),

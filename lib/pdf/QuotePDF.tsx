@@ -1,5 +1,5 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image, Link } from '@react-pdf/renderer'
 import { monogram } from '../monogram'
 import { SORTED_MARK_PNG } from './sortedMark'
 
@@ -10,6 +10,12 @@ const INK    = '#1A1A17'
 const MUTED  = '#6B6B60'
 const BORDER = '#E2E0D9'
 const SURF   = '#FAF9F6'
+
+// The marketing site, not NEXT_PUBLIC_APP_URL: this link is printed onto a
+// document that outlives the deploy that made it, and it must never carry a
+// preview URL into a customer's filing cabinet.
+const SITE_URL = 'https://getitsorted.co.za'
+const SITE_LABEL = 'getitSorted.co.za'
 
 const s = StyleSheet.create({
   page:        { fontFamily: 'Helvetica', fontSize: 9, color: INK, padding: 44, paddingBottom: 62 },
@@ -62,8 +68,9 @@ const s = StyleSheet.create({
 
   footer:      { position: 'absolute', bottom: 22, left: 44, right: 44, borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   footerText:  { fontSize: 7, color: MUTED },
-  madeWith:    { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  madeWith:    { flexDirection: 'row', alignItems: 'center', gap: 3 },
   madeWithMark:{ width: 9, height: 9, objectFit: 'contain' },
+  footerLink:  { fontSize: 7, color: ACCENT, textDecoration: 'none' },
   footerPage:  { fontSize: 7, color: MUTED, width: 44, textAlign: 'right' },
 })
 
@@ -261,9 +268,14 @@ export function QuotePDF(props: QuotePDFProps) {
 
         <View style={s.footer} fixed>
           <Text style={s.footerText}>{businessName} · {number}</Text>
+          {/* The one line on the page that sells Sorted, and it is sitting in
+              front of the tradesperson's customer — who is exactly the kind of
+              person who runs a small business too. Spelling out the domain and
+              making it clickable turns a credit into a way to get there. */}
           <View style={s.madeWith}>
             <Image src={SORTED_MARK_PNG} style={s.madeWithMark} />
-            <Text style={s.footerText}>Made with Sorted</Text>
+            <Text style={s.footerText}>Made with</Text>
+            <Link src={SITE_URL} style={s.footerLink}>{SITE_LABEL}</Link>
           </View>
           <Text style={s.footerPage} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>

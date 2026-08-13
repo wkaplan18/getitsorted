@@ -313,7 +313,17 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
             >
               Download PDF
             </a>
-            <p className="text-xs text-[#6B6B60]">Made with Sorted</p>
+            {/* The customer reading this often runs a small business too —
+                the credit is worth more as a way to get there than as a name. */}
+            <p className="text-xs text-[#6B6B60]">
+              Made with{' '}
+              <a
+                href="https://getitsorted.co.za"
+                className="text-[#B4530A] underline underline-offset-2 transition-opacity duration-150 hover:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B4530A]"
+              >
+                getitSorted.co.za
+              </a>
+            </p>
           </footer>
         </article>
       </div>
