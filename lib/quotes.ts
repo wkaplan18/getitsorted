@@ -339,6 +339,12 @@ export function renderLines(draft: Draft, lang: Lang, vatRegistered: boolean): s
  * This is the first thing most of these clients will see from the business, so
  * it carries the same details as the letterhead on the PDF — who this is, what
  * they do, and how to reach them.
+ *
+ * ALWAYS ENGLISH, whatever language the tradesperson chose. His language
+ * setting is a fact about him, not about his customers — a plumber who reads
+ * isiZulu still quotes clients whose language nobody here knows, and English is
+ * the one they can all be assumed to read. The figures and names are identical
+ * in every language anyway.
  */
 export function renderForwardCard(opts: {
   business: string
@@ -351,9 +357,8 @@ export function renderForwardCard(opts: {
   customer: string | null
   total: number
   link: string
-  lang: Lang
 }): string {
-  const { lang } = opts
+  const lang: Lang = 'en'
   const lines: string[] = [`*${opts.business}*`]
 
   // Trade, name and number on one line under the business, exactly as they sit

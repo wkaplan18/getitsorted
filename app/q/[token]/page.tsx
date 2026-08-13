@@ -8,7 +8,10 @@
 // prepaid data as the tradesperson (R22–30/GB on small bundles), so there is no
 // client JS beyond the pay form, no web fonts, and no images except the logo.
 
+import { cache } from 'react'
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendWhatsAppTemplate } from '@/lib/whatsapp'
 import { loadQuoteByToken, markViewed } from '@/lib/quoteView'
@@ -16,6 +19,52 @@ import { paystackConfigured } from '@/lib/paystack'
 import { monogram } from '@/lib/monogram'
 
 export const dynamic = 'force-dynamic'
+
+// generateMetadata and the page both need the quote; cache() makes that one
+// query per request instead of two.
+const loadQuote = cache(loadQuoteByToken)
+
+/**
+ * What WhatsApp shows when the tradesperson forwards the link.
+ *
+ * Without this the preview inherits the root layout — "Sorted / Forward your
+ * bills. Get sorted." — which tells the client nothing about the quote and
+ * reads like a demand for money from a company they've never heard of. The
+ * preview is the tradesperson's shopfront, so it carries HIS name.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
+  const { token } = await params
+  const view = await loadQuote(token)
+  if (!view) return { title: 'Not found' }
+
+  const { quote, business } = view
+  const isInvoice = quote.doc_type === 'invoice'
+  const docWord = isInvoice ? (business.vat_number ? 'Tax Invoice' : 'Invoice') : 'Quotation'
+  const title = `${docWord} ${quote.number} · ${business.business_name}`
+  const description = `${fmtR(quote.total)}${view.customer ? ` · for ${view.customer.name}` : ''}. View it or download the PDF.`
+
+  return {
+    title,
+    description,
+    // A quote link is unguessable but it is still somebody's private business —
+    // it must never end up in a search index.
+    robots: { index: false, follow: false },
+    openGraph: { title, description, type: 'website' },
+    twitter: { card: 'summary_large_image', title, description },
+  }
+}
+
+/**
+ * WhatsApp, Facebook and friends fetch a link to build its preview the moment
+ * it is pasted — before any human has seen it. Counting that as "your client
+ * opened the quote" would fire the notification while the tradesperson is
+ * still typing, and would do it again for every forward.
+ */
+function isLinkPreviewBot(userAgent: string | null): boolean {
+  if (!userAgent) return false
+  return /facebookexternalhit|WhatsApp|Twitterbot|Slackbot|TelegramBot|LinkedInBot|Discordbot|SkypeUriPreview|bot\b|crawler|spider|preview/i
+    .test(userAgent)
+}
 
 function fmtR(n: number): string {
   return 'R' + Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -33,7 +82,7 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
   // Next 15 route params are a Promise — they must be awaited, not read directly.
   const { token } = await params
 
-  const view = await loadQuoteByToken(token)
+  const view = await loadQuote(token)
   if (!view) notFound()
 
   const { quote, items, business, customer } = view
@@ -45,7 +94,9 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
 
   // First open → tell the tradesperson. Business-initiated, so it needs an
   // approved Utility template; a missing one must not break the page.
-  if (await markViewed(quote)) {
+  // Skipped for link-preview crawlers — see isLinkPreviewBot.
+  const userAgent = (await headers()).get('user-agent')
+  if (!isLinkPreviewBot(userAgent) && (await markViewed(quote))) {
     const { data: owner } = await supabaseAdmin
       .from('users').select('whatsapp_number').eq('id', quote.user_id).maybeSingle()
     if (owner?.whatsapp_number) {

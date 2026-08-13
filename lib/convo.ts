@@ -234,7 +234,6 @@ export async function handleConvoStep(
         customer: picked.name || null,
         total: Number(created.quote.total),
         token: created.quote.public_token,
-        lang,
       }))
       return true
     }
@@ -764,7 +763,6 @@ async function sendQuote(user: ConvoUser, draft: Draft, lang: Lang): Promise<voi
     customer: draft.customer,
     total: Number(saved.quote.total),
     token: saved.quote.public_token,
-    lang,
   }))
 }
 
@@ -782,7 +780,6 @@ function forwardCardFor(
     customer: string | null
     total: number
     token: string
-    lang: Lang
   },
 ): string {
   return renderForwardCard({
@@ -797,7 +794,6 @@ function forwardCardFor(
     customer: doc.customer,
     total: doc.total,
     link: quoteUrl(doc.token),
-    lang: doc.lang,
   })
 }
 
