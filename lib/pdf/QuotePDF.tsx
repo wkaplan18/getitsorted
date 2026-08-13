@@ -1,6 +1,7 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import { monogram } from '../monogram'
+import { SORTED_MARK_PNG } from './sortedMark'
 
 // Palette: deliberately not a stock framework blue. A quote from a one-person
 // trade business should read as solid and warm, not as a SaaS invoice.
@@ -58,8 +59,11 @@ const s = StyleSheet.create({
   bankKey:     { fontSize: 6.5, color: MUTED, marginBottom: 2 },
   bankVal:     { fontSize: 9, color: INK, fontFamily: 'Helvetica-Bold' },
 
-  footer:      { position: 'absolute', bottom: 22, left: 44, right: 44, borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 7, flexDirection: 'row', justifyContent: 'space-between' },
+  footer:      { position: 'absolute', bottom: 22, left: 44, right: 44, borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   footerText:  { fontSize: 7, color: MUTED },
+  madeWith:    { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  madeWithMark:{ width: 9, height: 9, objectFit: 'contain' },
+  footerPage:  { fontSize: 7, color: MUTED, width: 44, textAlign: 'right' },
 })
 
 function fmtR(n: number): string {
@@ -242,7 +246,11 @@ export function QuotePDF(props: QuotePDFProps) {
 
         <View style={s.footer} fixed>
           <Text style={s.footerText}>{businessName} · {number}</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+          <View style={s.madeWith}>
+            <Image src={SORTED_MARK_PNG} style={s.madeWithMark} />
+            <Text style={s.footerText}>Made with Sorted</Text>
+          </View>
+          <Text style={s.footerPage} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
       </Page>
     </Document>
