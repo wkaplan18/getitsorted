@@ -468,10 +468,12 @@ export async function handleConvoStep(
         const draft: Draft = { ...base, customer: known.name, customer_address: known.address }
         await sendWhatsApp(from, t(lang, 'client_known', { customer: known.name }))
         // Their address is already on file, so step 2 would be asking a repeat
-        // client something we already know. Skip straight to the work.
+        // client something we already know. Skip straight to the work — and
+        // say "last step" rather than "step 3 of 3", because a count that
+        // jumps from 1 to 3 reads as a fault rather than a shortcut.
         if (known.address) {
           await setConvoState(user.id, { step: 'ask_quote_items', draft })
-          await sendWhatsApp(from, t(lang, 'ask_quote_items'))
+          await sendWhatsApp(from, t(lang, 'ask_quote_items_short'))
           return true
         }
         await setConvoState(user.id, { step: 'ask_client_address', draft })

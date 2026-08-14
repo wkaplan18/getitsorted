@@ -58,6 +58,7 @@ export type StringKey =
   | 'client_known'
   | 'ask_client_address'
   | 'ask_quote_items'
+  | 'ask_quote_items_short'
   | 'quote_thanks'
   // quoting
   | 'quote_header'
@@ -149,6 +150,11 @@ const en: Strings = {
   ask_client_address: "Step 2 of 3 — What is their address?\n\nDon't have it? Reply N/A.",
   ask_quote_items:
     'Step 3 of 3 — What work are you doing, and what are you charging?\n\nFor example:\n"Paint 3 bedrooms R850 each, materials R1200"',
+  // Used when the client was already on file, so step 2 never happened.
+  // Counting "1 of 3" then "3 of 3" at someone makes a deliberate shortcut
+  // look like a fault.
+  ask_quote_items_short:
+    'Last step — What work are you doing, and what are you charging?\n\nFor example:\n"Paint 3 bedrooms R850 each, materials R1200"',
   quote_thanks: 'Thanks. Putting your quote together now…',
 
   quote_header: "Here's the quote:",
@@ -247,6 +253,8 @@ const zu: Strings = {
   ask_client_address: 'Isinyathelo 2 kwezi-3 — Ithini ikheli labo?\n\nAwunalo? Phendula ngo-N/A.',
   ask_quote_items:
     'Isinyathelo 3 kwezi-3 — Uwenza muphi umsebenzi, futhi ubiza malini?\n\nIsibonelo:\n"Penda amakamelo ama-3 R850 ngalinye, izinto R1200"',
+  ask_quote_items_short:
+    'Isinyathelo sokugcina — Uwenza muphi umsebenzi, futhi ubiza malini?\n\nIsibonelo:\n"Penda amakamelo ama-3 R850 ngalinye, izinto R1200"',
   quote_thanks: 'Ngiyabonga. Ngiyalungisa i-quote yakho manje…',
 
   quote_header: 'Nayi i-quote:',
@@ -343,6 +351,8 @@ const af: Strings = {
   ask_client_address: 'Stap 2 van 3 — Wat is hulle adres?\n\nHet jy dit nie? Antwoord N/A.',
   ask_quote_items:
     'Stap 3 van 3 — Watter werk doen jy, en wat vra jy?\n\nByvoorbeeld:\n"Verf 3 slaapkamers R850 elk, materiaal R1200"',
+  ask_quote_items_short:
+    'Laaste stap — Watter werk doen jy, en wat vra jy?\n\nByvoorbeeld:\n"Verf 3 slaapkamers R850 elk, materiaal R1200"',
   quote_thanks: 'Dankie. Ek stel nou jou kwotasie saam…',
 
   quote_header: 'Hier is die kwotasie:',
