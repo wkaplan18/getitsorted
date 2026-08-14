@@ -188,6 +188,19 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
     return true
   }
 
+  // "BANK" — straight to changing banking details.
+  //
+  // Exists because the card-payment warning tells them to reply BANK, and for
+  // a while that was a promise the app didn't keep: the word did nothing, and
+  // the one person guaranteed to see that message is someone whose account
+  // number was just refused. Only for a known user — there is nothing to
+  // change on an account that doesn't exist yet.
+  if (user && (cmd === 'bank' || cmd === 'ibhange' || cmd === 'bankbesonderhede')) {
+    await setConvoState(user.id, { step: 'ask_bank', edit: 'bank' })
+    await sendWhatsApp(from, t(lang, 'ask_bank'))
+    return true
+  }
+
   // "QUOTE" — the main way in. Starts the guided quote, asking only for the
   // setup this number hasn't already given. Checked before "QUOTES" (plural,
   // the history list) so the two never collide.

@@ -376,7 +376,11 @@ export async function handleConvoStep(
         .from('users')
         .update({ bank_name: bank.name, branch_code: bank.branchCode })
         .eq('id', user.id)
-      await setConvoState(user.id, { step: 'ask_account', draft: state.draft })
+      // `edit` has to survive the hop to the next question. Without it the
+      // account step forgets this came from the menu, decides it is first-time
+      // setup, and carries a user who only wanted to fix a digit onwards into
+      // being asked for a logo.
+      await setConvoState(user.id, { step: 'ask_account', draft: state.draft, edit: state.edit })
       await sendWhatsApp(from, t(lang, 'ask_account'))
       return true
     }

@@ -213,7 +213,7 @@ const en: Strings = {
   edit_client_saved: 'Saved — {customer}.',
 
   help:
-    'Here\'s what I can do:\n\n• MENU — everything, as a numbered list\n• Send me a job → I make a quote\n• Send me a bill → I track it and remind you\n• QUOTES — your recent quotes\n• BILLS — what you owe\n• LOGIN — get your dashboard code\n• LANGUAGE — change language\n• STOP — pause messages',
+    'Here\'s what I can do:\n\n• MENU — everything, as a numbered list\n• Send me a job → I make a quote\n• Send me a bill → I track it and remind you\n• QUOTES — your recent quotes\n• BILLS — what you owe\n• BANK — change your banking details\n• LOGIN — get your dashboard code\n• LANGUAGE — change language\n• STOP — pause messages',
   not_understood: "I didn't quite get that. Reply MENU to see what I can do.",
   save_failed: "Something went wrong saving that. Please send it again.",
   cancelled: 'Cancelled. Reply MENU to see everything I can do.',
@@ -310,7 +310,7 @@ const zu: Strings = {
   edit_client_saved: 'Kugciniwe — {customer}.',
 
   help:
-    'Nakhu engingakwenza:\n\n• MENU — konke, ohlwini olunezinombolo\n• Ngithumele umsebenzi → ngenza i-quote\n• Ngithumele ibhili → ngiyaligcina ngikukhumbuze\n• QUOTES — ama-quote akho akamuva\n• BILLS — okumele ukukhokhe\n• LOGIN — thola ikhodi ye-dashboard\n• LANGUAGE — shintsha ulimi\n• STOP — misa imiyalezo',
+    'Nakhu engingakwenza:\n\n• MENU — konke, ohlwini olunezinombolo\n• Ngithumele umsebenzi → ngenza i-quote\n• Ngithumele ibhili → ngiyaligcina ngikukhumbuze\n• QUOTES — ama-quote akho akamuva\n• BILLS — okumele ukukhokhe\n• BANK — shintsha imininingwane yasebhange\n• LOGIN — thola ikhodi ye-dashboard\n• LANGUAGE — shintsha ulimi\n• STOP — misa imiyalezo',
   not_understood: 'Angizwanga kahle. Phendula ngo-MENU ubone engingakwenza.',
   save_failed: 'Kube nenkinga ekugcineni lokho. Sicela ukuthumele futhi.',
   cancelled: 'Kukhanseliwe. Phendula ngo-MENU ubone konke engingakwenza.',
@@ -407,7 +407,7 @@ const af: Strings = {
   edit_client_saved: 'Gestoor — {customer}.',
 
   help:
-    'Dis wat ek kan doen:\n\n• MENU — alles, as \'n genommerde lys\n• Stuur my \'n werk → ek maak \'n kwotasie\n• Stuur my \'n rekening → ek hou dit by en herinner jou\n• QUOTES — jou onlangse kwotasies\n• BILLS — wat jy skuld\n• LOGIN — kry jou dashboard-kode\n• LANGUAGE — verander taal\n• STOP — stop boodskappe',
+    'Dis wat ek kan doen:\n\n• MENU — alles, as \'n genommerde lys\n• Stuur my \'n werk → ek maak \'n kwotasie\n• Stuur my \'n rekening → ek hou dit by en herinner jou\n• QUOTES — jou onlangse kwotasies\n• BILLS — wat jy skuld\n• BANK — verander jou bankbesonderhede\n• LOGIN — kry jou dashboard-kode\n• LANGUAGE — verander taal\n• STOP — stop boodskappe',
   not_understood: 'Ek het dit nie heeltemal verstaan nie. Antwoord MENU om te sien wat ek kan doen.',
   save_failed: 'Iets het verkeerd geloop met stoor. Stuur dit asseblief weer.',
   cancelled: 'Gekanselleer. Antwoord MENU om te sien wat ek alles kan doen.',
