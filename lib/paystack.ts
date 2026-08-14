@@ -332,8 +332,17 @@ export async function createPaymentLink(opts: {
  * the parked Stitch bug was a success page that marked things paid purely on
  * being reached, which anyone could do by visiting the URL.
  */
+/**
+ * 'pending' covers both "Paystack is still working on it" and "we could not
+ * find out" — anything we are not certain about. Never guess 'failed': telling
+ * someone their payment bounced when it actually went through invites them to
+ * pay a second time.
+ */
+export type PaymentOutcome = 'paid' | 'failed' | 'pending'
+
 export async function verifyTransaction(reference: string): Promise<{
   paid: boolean
+  outcome: PaymentOutcome
   amountRands: number
   paidAt: string | null
 }> {
@@ -342,10 +351,21 @@ export async function verifyTransaction(reference: string): Promise<{
   })
   const body = await res.json().catch(() => null)
   if (!res.ok || !body?.status) {
-    return { paid: false, amountRands: 0, paidAt: null }
+    return { paid: false, outcome: 'pending', amountRands: 0, paidAt: null }
   }
+
+  // A declined card is not a slow one. Collapsing every non-success into "not
+  // paid yet" told customers whose payment had bounced to sit tight and not
+  // pay again — so they didn't, and nobody was ever paid.
+  const status = String(body.data?.status ?? '')
+  const outcome: PaymentOutcome =
+    status === 'success' ? 'paid'
+    : ['failed', 'abandoned', 'reversed'].includes(status) ? 'failed'
+    : 'pending'
+
   return {
-    paid: body.data?.status === 'success',
+    paid: outcome === 'paid',
+    outcome,
     amountRands: (body.data?.amount ?? 0) / 100,
     paidAt: body.data?.paid_at ?? null,
   }

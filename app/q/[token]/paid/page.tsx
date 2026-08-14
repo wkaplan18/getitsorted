@@ -8,7 +8,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { loadQuoteByToken, markPaid } from '@/lib/quoteView'
-import { verifyTransaction, paystackConfigured } from '@/lib/paystack'
+import { verifyTransaction, paystackConfigured, type PaymentOutcome } from '@/lib/paystack'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,15 +23,18 @@ export default async function PaidPage({ params }: { params: Promise<{ token: st
   if (!view) notFound()
 
   const { quote, business } = view
+  const docWord = quote.doc_type === 'invoice' ? 'invoice' : 'quote'
 
-  let paid = quote.status === 'paid'
-  if (!paid && quote.paystack_reference && paystackConfigured()) {
+  // Three outcomes, not two. Every payment method Paystack offers lands back
+  // here, and every one of them can also decline or be abandoned — so the page
+  // has to say which of those happened rather than assume it went through.
+  let outcome: PaymentOutcome = quote.status === 'paid' ? 'paid' : 'pending'
+  if (outcome !== 'paid' && quote.paystack_reference && paystackConfigured()) {
     const result = await verifyTransaction(quote.paystack_reference)
-    if (result.paid) {
-      await markPaid(quote.id)
-      paid = true
-    }
+    outcome = result.outcome
+    if (result.paid) await markPaid(quote.id)
   }
+  const paid = outcome === 'paid'
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#FAF9F6] px-4 py-12">
@@ -52,6 +55,22 @@ export default async function PaidPage({ params }: { params: Promise<{ token: st
               {quote.number}. They&rsquo;ve been notified.
             </p>
           </>
+        ) : outcome === 'failed' ? (
+          <>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FDECEC] text-2xl text-[#9B1C1C]">
+              ✕
+            </div>
+            <h1 className="mt-4 text-xl font-semibold tracking-[-0.01em] text-[#1A1A17]">
+              Payment didn&rsquo;t go through
+            </h1>
+            {/* Said plainly, and it must invite another attempt. Showing the
+                "sit tight, no need to pay again" copy here is what a declined
+                card used to get — so nobody retried, and nobody was paid. */}
+            <p className="mt-2 leading-relaxed text-[#6B6B60]">
+              Nothing has been taken from your account. You can try again, or pay{' '}
+              {business.business_name} by EFT using the details on the {docWord}.
+            </p>
+          </>
         ) : (
           <>
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FDF3E7] text-2xl text-[#B4530A]">
@@ -67,11 +86,13 @@ export default async function PaidPage({ params }: { params: Promise<{ token: st
           </>
         )}
 
+        {/* Present in every state. However the payment ended, there is always a
+            way back to the document it was for. */}
         <Link
           href={`/q/${token}`}
           className="mt-6 inline-block rounded-lg border border-[#D6D3C9] px-4 py-2.5 font-medium text-[#1A1A17] transition-transform duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B4530A]"
         >
-          Back to {quote.doc_type === 'invoice' ? 'invoice' : 'quote'}
+          {outcome === 'failed' ? `Try again` : `Back to ${docWord}`}
         </Link>
       </div>
     </main>
