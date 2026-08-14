@@ -25,7 +25,14 @@ export type Quote = {
   vat_amount: number
   total: number
   public_token: string
+  /** The most recent attempt — what the return-from-payment page verifies. */
   paystack_reference: string | null
+  /**
+   * Every reference ever minted for this quote. The webhook matches against
+   * this, not the one above: an abandoned checkout link stays payable, so the
+   * reference that comes back is not always the newest one.
+   */
+  paystack_references: string[] | null
   /**
    * What the customer's card was actually charged — the total plus the card
    * payment fee. Null for anything not paid by card. Never use this as the

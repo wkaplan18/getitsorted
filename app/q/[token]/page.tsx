@@ -15,7 +15,9 @@ import { headers } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendWhatsAppTemplate } from '@/lib/whatsapp'
 import { loadQuoteByToken, markViewed } from '@/lib/quoteView'
-import { paystackConfigured, grossUp, cardPaymentsEnabledFor } from '@/lib/paystack'
+import {
+  paystackConfigured, grossUp, cardPaymentsEnabledFor, MIN_CARD_PAYABLE_CENTS,
+} from '@/lib/paystack'
 import { monogram } from '@/lib/monogram'
 
 export const dynamic = 'force-dynamic'
@@ -116,7 +118,7 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
   const canPay =
     !isPaid &&
     paystackConfigured() &&
-    Number(quote.total) > 0 &&
+    Math.round(Number(quote.total) * 100) >= MIN_CARD_PAYABLE_CENTS &&
     Boolean(business.paystack_subaccount) &&
     cardPaymentsEnabledFor(business.owner_whatsapp)
 

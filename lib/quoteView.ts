@@ -78,12 +78,32 @@ export async function loadQuoteByToken(token: string): Promise<QuoteView | null>
 }
 
 /**
+ * How long after sending before an open is treated as the customer's.
+ *
+ * The tradesperson opens his own link the moment he has it, to check it looks
+ * right — and that open is indistinguishable from the customer's: same phone,
+ * same WhatsApp, no session on a public page. Counting it sent him "👀 your
+ * customer opened it" about himself, and, far worse, spent the one-shot flag,
+ * so when the customer really did open it nobody was told at all. The feature
+ * quietly destroyed itself on first use.
+ */
+const VIEW_GRACE_MS = 3 * 60 * 1000
+
+/**
  * Marks the quote as viewed the first time the customer opens it, and returns
  * whether this was that first time (so the caller can notify the tradesperson).
  * Later views don't re-notify — one ping per quote, not one per refresh.
+ *
+ * Opens inside VIEW_GRACE_MS of sending don't count at all: not marked, not
+ * notified. The cost is a customer who opens it within three minutes and never
+ * again, who now goes unreported. That is the better failure — a missed
+ * notification is quiet, whereas a wrong one trains him to ignore the feature.
  */
 export async function markViewed(quote: Quote): Promise<boolean> {
   if (quote.viewed_at || quote.status === 'paid') return false
+
+  const sentAt = quote.sent_at ?? quote.created_at
+  if (sentAt && Date.now() - new Date(sentAt).getTime() < VIEW_GRACE_MS) return false
   const { error } = await supabaseAdmin
     .from('quotes')
     .update({

@@ -386,6 +386,22 @@ export async function handleConvoStep(
     }
 
     case 'ask_account': {
+      // SKIP works here for the same reason it works on the bank question: the
+      // previous step offered a way out and this one didn't, so anyone who
+      // changed their mind after naming their bank got the identical question
+      // back forever with no hint that MENU was the only exit.
+      if (!text || SKIP_WORDS.has(lower)) {
+        if (state.edit === 'bank') {
+          await setConvoState(user.id, null)
+          await sendWhatsApp(from, t(lang, 'bank_skipped'))
+          return true
+        }
+        await setConvoState(user.id, { step: 'ask_logo', draft: state.draft })
+        await sendWhatsApp(from, t(lang, 'bank_skipped'))
+        await sendWhatsApp(from, t(lang, 'ask_logo'))
+        return true
+      }
+
       const account = cleanAccountNumber(text)
       if (!account) {
         // Anything with no digits in it isn't an account number. Ask again
@@ -796,6 +812,13 @@ export async function startQuote(
 
 async function sendQuote(user: ConvoUser, draft: Draft, lang: Lang): Promise<void> {
   const from = user.whatsapp_number
+
+  // Last chance to have a subaccount before a customer is looking at a quote.
+  // Subaccounts are otherwise only built when banking changes, so a Paystack
+  // blip at that moment switched card payments off for good — and a user who
+  // lives entirely in WhatsApp never opens the dashboard that would rebuild
+  // it. Costs nothing when one already exists, which is almost always.
+  await ensureSubaccount(user.id)
 
   const saved = await saveQuote({
     userId: user.id,

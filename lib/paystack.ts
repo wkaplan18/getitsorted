@@ -92,6 +92,16 @@ const PAYSTACK_VAT = 0.15
  */
 const ROUNDING_BUFFER_CENTS = 5
 
+/**
+ * Below this, card payment isn't offered at all.
+ *
+ * The fee is mostly flat (R2 + R1.15 + VAT), so it doesn't shrink with the
+ * job: on a R50 callout the customer would be asked for R56.61, a 13% surcharge
+ * to save walking to an ATM. Nobody pays that, and being asked makes the whole
+ * quote look like a rip-off. EFT is shown as normal.
+ */
+export const MIN_CARD_PAYABLE_CENTS = 15000
+
 export type FeeBreakdown = {
   /** What the tradesperson receives — exactly the quote total. */
   quoteTotalCents: number
