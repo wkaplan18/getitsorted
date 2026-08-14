@@ -356,15 +356,10 @@ export async function handleConvoStep(
     }
 
     case 'ask_bank': {
-      if (!text || SKIP_WORDS.has(lower)) {
-        if (state.edit === 'bank') {
-          await setConvoState(user.id, null)
-          await sendWhatsApp(from, t(lang, 'bank_skipped'))
-          return true
-        }
-        await setConvoState(user.id, { step: 'ask_logo', draft: state.draft })
-        await sendWhatsApp(from, t(lang, 'bank_skipped'))
-        await sendWhatsApp(from, t(lang, 'ask_logo'))
+      // Required, so there is no way past it but answering. Skipping used to
+      // be allowed and produced a quote nobody could pay — see ask_account.
+      if (!text) {
+        await sendWhatsApp(from, t(lang, 'ask_bank'))
         return true
       }
       // Branch code is derived from the bank rather than asked for — every SA
@@ -386,22 +381,10 @@ export async function handleConvoStep(
     }
 
     case 'ask_account': {
-      // SKIP works here for the same reason it works on the bank question: the
-      // previous step offered a way out and this one didn't, so anyone who
-      // changed their mind after naming their bank got the identical question
-      // back forever with no hint that MENU was the only exit.
-      if (!text || SKIP_WORDS.has(lower)) {
-        if (state.edit === 'bank') {
-          await setConvoState(user.id, null)
-          await sendWhatsApp(from, t(lang, 'bank_skipped'))
-          return true
-        }
-        await setConvoState(user.id, { step: 'ask_logo', draft: state.draft })
-        await sendWhatsApp(from, t(lang, 'bank_skipped'))
-        await sendWhatsApp(from, t(lang, 'ask_logo'))
-        return true
-      }
-
+      // No SKIP, here or on the bank question. A quote with no account number
+      // has no way to be paid — it isn't a quote with a gap in it, it's a
+      // document that cannot do its job. Asking again beats printing one.
+      // MENU still leaves, as it does from anywhere.
       const account = cleanAccountNumber(text)
       if (!account) {
         // Anything with no digits in it isn't an account number. Ask again

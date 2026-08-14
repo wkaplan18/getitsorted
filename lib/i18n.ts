@@ -47,7 +47,6 @@ export type StringKey =
   | 'ask_bank'
   | 'ask_account'
   | 'bank_saved'
-  | 'bank_skipped'
   | 'ask_logo'
   | 'logo_saved'
   | 'logo_made'
@@ -131,10 +130,9 @@ const en: Strings = {
     'Got it, {business}. What work do you do?\n\nJust a word or two — plumber, electrician, cleaner, painter, nail tech, garden services.',
   ask_name: 'And your name?',
   ask_bank:
-    'Which bank do you use? This is how your clients pay you.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…\n\nRather not say? Reply SKIP.',
-  ask_account: 'And your account number?',
+    'Which bank do you use?\n\nThis goes on every quote — it is how your clients pay you, so I need it before I can make one.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…',
+  ask_account: 'And your account number?\n\nThis is what your clients type in when they pay you.',
   bank_saved: 'Saved — {bank}, account {account}. This appears on every quote so your clients can pay you by EFT.',
-  bank_skipped: "No problem. You can add your banking details any time on your dashboard — until then your quotes won't show a way to pay you.",
   ask_logo:
     "Last thing — send me your logo as a picture if you have one.\nNo logo? Reply SKIP and I'll make you one.",
   logo_saved: 'Logo saved.',
@@ -230,10 +228,9 @@ const zu: Strings = {
     'Ngiyabonga, {business}. Wenza msebenzi muni?\n\nIgama elilodwa noma amabili nje — iplama, u-electrician, umhlanzi, umpendi, izinzipho, izingadi.',
   ask_name: 'Ngubani igama lakho?',
   ask_bank:
-    'Usebenzisa liphi ibhange? Yilapho amakhasimende akho azokukhokhela khona.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…\n\nAwufuni ukusho? Phendula ngo-SKIP.',
-  ask_account: 'Ithini inombolo ye-akhawunti yakho?',
+    'Usebenzisa liphi ibhange?\n\nLokhu kuvela kuwo wonke ama-quote — yindlela amakhasimende akho akukhokhela ngayo, ngakho ngiyakudinga ngaphambi kokwenza i-quote.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…',
+  ask_account: 'Ithini inombolo ye-akhawunti yakho?\n\nYileyo amakhasimende akho ayifakayo lapho ekukhokhela.',
   bank_saved: 'Kugciniwe — {bank}, i-akhawunti {account}. Lokhu kuvela kuwo wonke ama-quote ukuze amakhasimende akhokhe nge-EFT.',
-  bank_skipped: 'Akunankinga. Ungangeza imininingwane yebhange noma nini ku-dashboard yakho — kuze kube yilapho, ama-quote akho ngeke akhombise indlela yokukukhokhela.',
   ask_logo:
     'Okokugcina — ngithumele ilogo yakho njengesithombe uma unayo.\nAwunayo ilogo? Phendula ngo-SKIP ngikwenzele eyakho.',
   logo_saved: 'Ilogo igciniwe.',
@@ -327,10 +324,9 @@ const af: Strings = {
     "Reg so, {business}. Watter werk doen jy?\n\nNet 'n woord of twee — loodgieter, elektrisiën, skoonmaker, verwer, naels, tuindienste.",
   ask_name: 'En jou naam?',
   ask_bank:
-    'Watter bank gebruik jy? Dit is hoe jou kliënte jou betaal.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…\n\nLiewer nie sê nie? Antwoord SKIP.',
-  ask_account: 'En jou rekeningnommer?',
+    'Watter bank gebruik jy?\n\nDit verskyn op elke kwotasie — dis hoe jou kliënte jou betaal, so ek het dit nodig voordat ek een kan maak.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…',
+  ask_account: 'En jou rekeningnommer?\n\nDis wat jou kliënte intik wanneer hulle jou betaal.',
   bank_saved: 'Gestoor — {bank}, rekening {account}. Dit verskyn op elke kwotasie sodat jou kliënte jou per EFT kan betaal.',
-  bank_skipped: 'Geen probleem nie. Jy kan jou bankbesonderhede enige tyd op jou dashboard byvoeg — tot dan wys jou kwotasies geen manier om jou te betaal nie.',
   ask_logo:
     'Laaste ding — stuur my jou logo as \'n prent as jy een het.\nGeen logo nie? Antwoord SKIP, dan maak ek vir jou een.',
   logo_saved: 'Logo gestoor.',
