@@ -9,6 +9,7 @@
 // State lives in users.convo_state (jsonb) because the webhook is stateless and
 // the user's phone is not somewhere we can keep anything.
 
+import sharp from 'sharp'
 import { supabaseAdmin } from './supabase'
 import { sendWhatsApp, downloadMedia } from './whatsapp'
 import { t, toLang, langFromChoice, fmtRand, type Lang } from './i18n'
@@ -882,15 +883,49 @@ function forwardCardFor(
  * reject anonymous writes. Failure is non-fatal: onboarding continues with no
  * logo rather than dead-ending on a storage error.
  */
+/**
+ * Widest a stored logo needs to be.
+ *
+ * It is drawn 116pt wide on the PDF, which is ~480px at print resolution. A
+ * phone camera photo of a signboard arrives at 1536px or more and costs the
+ * customer data on every quote they open, for detail no one can see.
+ */
+const LOGO_MAX_PX = 512
+
 async function saveLogo(userId: string, mediaId: string): Promise<boolean> {
   try {
-    const { base64, mimeType } = await downloadMedia(mediaId)
-    const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg'
-    const path = `${userId}/logo.${ext}`
+    const { base64 } = await downloadMedia(mediaId)
+    const original = Buffer.from(base64, 'base64')
 
+    // Transparency has to survive — a logo with a knocked-out background turns
+    // into a white rectangle sitting on the quote if it is flattened to JPEG.
+    // Everything else compresses far better as JPEG: a real 1536x1024 upload
+    // went 93KB → 19KB, where palette PNG only reached 43KB.
+    const image = sharp(original).resize(LOGO_MAX_PX, LOGO_MAX_PX, {
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    const { hasAlpha } = await sharp(original).metadata()
+
+    const [body, ext, contentType] = hasAlpha
+      ? [await image.png({ compressionLevel: 9, palette: true }).toBuffer(), 'png', 'image/png']
+      : [await image.jpeg({ quality: 80, mozjpeg: true }).toBuffer(), 'jpg', 'image/jpeg']
+
+    // Clear the folder first. Uploading to logo.<ext> with upsert only replaces
+    // a file of the SAME extension, so someone who sent a JPEG and later a PNG
+    // left the original orphaned in the bucket for good — paid for forever and
+    // referenced by nothing.
+    const { data: existing } = await supabaseAdmin.storage.from('logos').list(userId)
+    if (existing?.length) {
+      await supabaseAdmin.storage
+        .from('logos')
+        .remove(existing.map(file => `${userId}/${file.name}`))
+    }
+
+    const path = `${userId}/logo.${ext}`
     const { error } = await supabaseAdmin.storage
       .from('logos')
-      .upload(path, Buffer.from(base64, 'base64'), { contentType: mimeType, upsert: true })
+      .upload(path, body, { contentType, upsert: true })
 
     if (error) {
       console.error('[convo] logo upload failed:', error.message)
@@ -898,7 +933,13 @@ async function saveLogo(userId: string, mediaId: string): Promise<boolean> {
     }
 
     const { data } = supabaseAdmin.storage.from('logos').getPublicUrl(path)
-    await supabaseAdmin.from('users').update({ logo_url: data.publicUrl }).eq('id', userId)
+    // Cache-buster. The path is stable by design, so without it a replaced logo
+    // keeps serving the old image from the CDN and the user thinks the upload
+    // silently failed.
+    const versioned = `${data.publicUrl}?v=${Date.now()}`
+    await supabaseAdmin.from('users').update({ logo_url: versioned }).eq('id', userId)
+
+    console.log(`[convo] logo ${original.length} → ${body.length} bytes (${ext}) for ${userId}`)
     return true
   } catch (err) {
     console.error('[convo] logo download failed:', err)

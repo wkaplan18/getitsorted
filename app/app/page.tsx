@@ -466,7 +466,7 @@ export default function Home() {
         >
           {loading ? 'Verifying...' : 'Verify'}
         </button>
-        <button onClick={() => setView('login')} className="w-full mt-2 text-gray-400 text-xs py-2">Back</button>
+        <button onClick={() => setView('login')} className="w-full mt-2 text-gray-600 hover:text-gray-900 transition-colors text-xs py-2">Back</button>
       </div>
     </div>
   )
@@ -480,7 +480,7 @@ export default function Home() {
             <SortedLogo size={30} />
             <span className="font-bold text-gray-900" style={{ letterSpacing: '-0.03em' }}>Sorted</span>
           </div>
-          <button onClick={logout} className="text-gray-400 text-xs hover:text-gray-600 transition-colors">Logout</button>
+          <button onClick={logout} className="text-gray-600 text-xs hover:text-gray-900 transition-colors">Logout</button>
         </div>
       </div>
 
@@ -641,7 +641,7 @@ export default function Home() {
                     >
                       Clear {doneReminders.length} done?
                     </button>
-                    <button onClick={() => setConfirmClearDone(false)} className="text-xs text-gray-400 px-1.5 py-1">✕</button>
+                    <button onClick={() => setConfirmClearDone(false)} aria-label="Cancel" className="text-xs text-gray-600 hover:text-gray-900 transition-colors px-2 py-1 rounded-lg">✕</button>
                   </div>
                 ) : (
                   <button
@@ -917,7 +917,7 @@ function BillCard({ bill, senderLabel, onPaid, onUnpaid, onPayStitch, onDelete, 
               >
                 Delete
               </button>
-              <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-400 px-1">✕</button>
+              <button onClick={() => setConfirmDelete(false)} aria-label="Cancel" className="text-xs text-gray-600 hover:text-gray-900 transition-colors px-2 py-1 rounded-lg">✕</button>
             </div>
           ) : (
             <>
