@@ -1527,10 +1527,10 @@ function BusinessProfileCard({
       >
         <div className="flex items-center gap-3 min-w-0">
           {profile.logo_url ? (
+            // Same reason as the quote page: a square box shrinks a wide logo
+            // to fit its width. Height fixed, width free, capped so it can't
+            // push the business name off a phone screen.
             // eslint-disable-next-line @next/next/no-img-element
-            {/* Same reason as the quote page: a square box shrinks a wide logo
-                to fit its width. Height fixed, width free, capped so it can't
-                push the business name off a phone screen. */}
             <img src={profile.logo_url} alt="" className="h-10 w-auto max-w-[120px] object-contain object-left flex-shrink-0" />
           ) : (
             <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: '#fdecd9' }}>
