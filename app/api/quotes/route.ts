@@ -124,7 +124,14 @@ export async function PATCH(req: NextRequest) {
     .some(field => field in updates)
   if (touchedBanking) {
     await resetSubaccount(userId)
-    await ensureSubaccount(userId)
+    // He just saved this, so a number Paystack won't accept is worth a
+    // WhatsApp — the dashboard has nowhere to show it and silence reads as
+    // success.
+    const outcome = await ensureSubaccount(userId, { notify: true })
+    return NextResponse.json({
+      ok: true,
+      card_payments: outcome.ok ? 'on' : outcome.reason,
+    })
   }
 
   return NextResponse.json({ ok: true })

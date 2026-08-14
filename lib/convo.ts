@@ -391,11 +391,9 @@ export async function handleConvoStep(
       }
       await supabaseAdmin.from('users').update({ account_number: account }).eq('id', user.id)
 
-      // Bank details are now complete — build his Paystack subaccount so his
-      // next quote can carry a card button. Fails soft; he is still payable by
-      // EFT either way.
+      // His banking changed, so any existing subaccount now points at the
+      // wrong account and has to be rebuilt.
       await resetSubaccount(user.id)
-      await ensureSubaccount(user.id)
 
       const fresh = await reloadUser(user.id)
       const bankSaved = t(lang, 'bank_saved', {
@@ -403,14 +401,20 @@ export async function handleConvoStep(
         account,
       })
 
+      // Built AFTER the confirmation is sent, not before: ensureSubaccount can
+      // send a warning of its own, and leading with "⚠️ that number was
+      // refused" only to follow it with "✓ bank saved" reads as a system
+      // arguing with itself. Saved first, then what it means for cards.
       if (state.edit === 'bank') {
         await setConvoState(user.id, null)
         await sendWhatsApp(from, bankSaved)
+        await ensureSubaccount(user.id, { notify: true })
         return true
       }
 
       await setConvoState(user.id, { step: 'ask_logo', draft: state.draft })
       await sendWhatsApp(from, bankSaved)
+      await ensureSubaccount(user.id, { notify: true })
       await sendWhatsApp(from, t(lang, 'ask_logo'))
       return true
     }

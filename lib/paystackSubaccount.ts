@@ -10,48 +10,78 @@
 // far worse trade.
 
 import { supabaseAdmin } from './supabase'
+import { sendWhatsApp } from './whatsapp'
+import { t, toLang } from './i18n'
 import {
   paystackConfigured, paystackBankCode, createSubaccount, cardPaymentsEnabledFor,
 } from './paystack'
+
+export type SubaccountOutcome =
+  | { ok: true; code: string }
+  /** Card payments aren't on for this user, or his banking isn't filled in. */
+  | { ok: false; reason: 'off' | 'incomplete' }
+  /** His fault and fixable — worth telling him about. */
+  | { ok: false; reason: 'rejected' | 'unknown_bank'; bank: string }
+  /** Ours. Log it; don't bother him with it. */
+  | { ok: false; reason: 'error' }
 
 /**
  * Makes sure the user has a Paystack subaccount, creating one if his bank
  * details are complete and he doesn't already have one.
  *
- * Returns the subaccount code, or null if one could not be made — which is the
- * normal case for a user who skipped the banking questions.
+ * `notify` sends him a WhatsApp when the failure is one he can fix. It must be
+ * true only where he just did something — finishing the bank step, saving the
+ * profile — and never on the dashboard-load backfill, which would message him
+ * every single time he opened the app.
  */
-export async function ensureSubaccount(userId: string): Promise<string | null> {
-  if (!paystackConfigured()) return null
+export async function ensureSubaccount(
+  userId: string,
+  opts: { notify?: boolean } = {}
+): Promise<SubaccountOutcome> {
+  if (!paystackConfigured()) return { ok: false, reason: 'off' }
 
   const { data: user } = await supabaseAdmin
     .from('users')
-    .select('whatsapp_number, business_name, name, bank_name, account_number, paystack_subaccount')
+    .select('whatsapp_number, business_name, name, bank_name, account_number, paystack_subaccount, language')
     .eq('id', userId)
     .maybeSingle()
 
-  if (!user) return null
+  if (!user) return { ok: false, reason: 'off' }
 
   // Card payments are behind an allowlist while they're being proven. Checked
   // here rather than only at the payment: no subaccount means no card button
   // anywhere, so there is one switch instead of several to keep in step.
-  if (!cardPaymentsEnabledFor(user.whatsapp_number)) return null
+  if (!cardPaymentsEnabledFor(user.whatsapp_number)) return { ok: false, reason: 'off' }
 
-  if (user.paystack_subaccount) return user.paystack_subaccount
+  if (user.paystack_subaccount) return { ok: true, code: user.paystack_subaccount }
 
-  // Paystack needs all three. Someone who skipped the bank step is not an
-  // error, he just isn't payable by card yet.
-  if (!user.bank_name || !user.account_number) return null
+  // Paystack needs both. Someone who skipped the bank step is not an error, he
+  // just isn't payable by card yet.
+  if (!user.bank_name || !user.account_number) return { ok: false, reason: 'incomplete' }
+
+  const bank = user.bank_name
+  const lang = toLang(user.language)
+
+  /** Tells him only when he can act on it, and only when he just asked. */
+  const tell = async (key: 'card_bank_rejected' | 'card_bank_unknown') => {
+    if (!opts.notify || !user.whatsapp_number) return
+    try {
+      await sendWhatsApp(user.whatsapp_number, t(lang, key, { bank }))
+    } catch (err) {
+      console.error('[paystack] could not send bank warning:', err)
+    }
+  }
 
   try {
-    const bankCode = await paystackBankCode(user.bank_name)
+    const bankCode = await paystackBankCode(bank)
     if (!bankCode) {
       // An unrecognised bank must never be settled to a guessed code.
-      console.warn(`[paystack] no Paystack bank code for "${user.bank_name}" (user ${userId})`)
-      return null
+      console.warn(`[paystack] no Paystack bank code for "${bank}" (user ${userId})`)
+      await tell('card_bank_unknown')
+      return { ok: false, reason: 'unknown_bank', bank }
     }
 
-    const code = await createSubaccount({
+    const result = await createSubaccount({
       // Paystack shows this on the customer's card statement, so it wants to
       // be the trading name the customer recognises, not "Sorted".
       businessName: user.business_name ?? user.name ?? 'Sorted',
@@ -59,15 +89,22 @@ export async function ensureSubaccount(userId: string): Promise<string | null> {
       accountNumber: user.account_number,
     })
 
+    if (!result.ok) {
+      console.warn(`[paystack] subaccount refused for user ${userId}: ${result.message}`)
+      if (!result.rejected) return { ok: false, reason: 'error' }
+      await tell('card_bank_rejected')
+      return { ok: false, reason: 'rejected', bank }
+    }
+
     await supabaseAdmin
       .from('users')
-      .update({ paystack_subaccount: code, paystack_subaccount_at: new Date().toISOString() })
+      .update({ paystack_subaccount: result.code, paystack_subaccount_at: new Date().toISOString() })
       .eq('id', userId)
 
-    return code
+    return { ok: true, code: result.code }
   } catch (err) {
     console.error('[paystack] ensureSubaccount failed:', err)
-    return null
+    return { ok: false, reason: 'error' }
   }
 }
 

@@ -210,11 +210,22 @@ export async function paystackBankCode(bankName: string | null): Promise<string 
  * an override were ever missed, the failure is Sorted earning nothing — not a
  * tradesperson losing his money.
  */
+export type CreateSubaccountResult =
+  | { ok: true; code: string }
+  /**
+   * Paystack checked the account number against the bank and refused it. This
+   * is the tradesperson's typo, not our outage, and it is the one failure he
+   * can actually do something about — so it is a distinct case rather than a
+   * generic error, and the caller is expected to tell him.
+   */
+  | { ok: false; rejected: true; message: string }
+  | { ok: false; rejected: false; message: string }
+
 export async function createSubaccount(opts: {
   businessName: string
   bankCode: string
   accountNumber: string
-}): Promise<string> {
+}): Promise<CreateSubaccountResult> {
   const res = await fetch(`${BASE}/subaccount`, {
     method: 'POST',
     headers: {
@@ -229,10 +240,14 @@ export async function createSubaccount(opts: {
     }),
   })
   const body = await res.json().catch(() => null)
-  if (!res.ok || !body?.status) {
-    throw new Error(`Paystack subaccount failed (${res.status}): ${body?.message ?? 'no body'}`)
-  }
-  return body.data.subaccount_code as string
+
+  if (res.ok && body?.status) return { ok: true, code: body.data.subaccount_code as string }
+
+  const message = String(body?.message ?? `HTTP ${res.status}`)
+  // Paystack answers a bad account number with 400 and "Account number is
+  // invalid". Anything 5xx, or a network failure, is ours and not his.
+  const rejected = res.status === 400 && /account number/i.test(message)
+  return { ok: false, rejected, message }
 }
 
 export type PaymentLink = {

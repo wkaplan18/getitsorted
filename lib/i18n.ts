@@ -83,6 +83,8 @@ export type StringKey =
   | 'quote_paid'
   | 'invoice_created'
   | 'invoice_photos'
+  | 'card_bank_rejected'
+  | 'card_bank_unknown'
   | 'month_summary_header'
   | 'month_money_in'
   | 'month_outstanding'
@@ -169,6 +171,12 @@ const en: Strings = {
   quote_paid: "💰 {customer} paid {amount} for {number}.\nMoney's on its way to your account.",
   invoice_created: 'Nice one. Turned it into invoice {number}.',
   invoice_photos: 'Want to add photos of the finished work? Just send them.',
+  // Said without blame and with the way out in it: the number is usually right
+  // and mistyped, and the quote still works on EFT either way.
+  card_bank_rejected:
+    "⚠️ {bank} didn't accept that account number, so card payments are switched off for now.\n\nYour quotes still show your bank details, so customers can still pay you by EFT.\n\nReply BANK to try the number again.",
+  card_bank_unknown:
+    "⚠️ I can't set up card payments with {bank} yet.\n\nYour quotes still show your bank details, so customers can pay you by EFT as normal.",
   month_summary_header: '{month} for {business}:',
   month_money_in: 'Money in',
   month_outstanding: 'Still owed',
@@ -260,6 +268,10 @@ const zu: Strings = {
   quote_paid: '💰 U-{customer} ukhokhe u-{amount} we-{number}.\nImali isendleleni eya ku-akhawunti yakho.',
   invoice_created: 'Kuhle. Ngiyiguqule yaba yi-invoice {number}.',
   invoice_photos: 'Ufuna ukufaka izithombe zomsebenzi oqediwe? Zithumele nje.',
+  card_bank_rejected:
+    "⚠️ I-{bank} ayilamukelanga lelo nombolo le-akhawunti, ngakho izinkokhelo ngekhadi zivaliwe okwamanje.\n\nAmakhotheshini akho asabonisa imininingwane yasebhange, ngakho amakhasimende asengakhokha nge-EFT.\n\nPhendula ngo-BANK ukuzama futhi.",
+  card_bank_unknown:
+    "⚠️ Angikwazi ukusetha izinkokhelo ngekhadi nge-{bank} okwamanje.\n\nAmakhotheshini akho asabonisa imininingwane yasebhange, ngakho amakhasimende angakhokha nge-EFT njengenjwayelo.",
   month_summary_header: 'U-{month} ka-{business}:',
   month_money_in: 'Imali engenile',
   month_outstanding: 'Esakweletwa',
@@ -351,6 +363,10 @@ const af: Strings = {
   quote_paid: '💰 {customer} het {amount} vir {number} betaal.\nDie geld is op pad na jou rekening.',
   invoice_created: 'Mooi so. Dit is nou faktuur {number}.',
   invoice_photos: 'Wil jy foto\'s van die klaar werk byvoeg? Stuur hulle net.',
+  card_bank_rejected:
+    "⚠️ {bank} het daardie rekeningnommer nie aanvaar nie, so kaartbetalings is vir eers af.\n\nJou kwotasies wys steeds jou bankbesonderhede, so kliënte kan jou steeds per EFT betaal.\n\nAntwoord BANK om die nommer weer te probeer.",
+  card_bank_unknown:
+    "⚠️ Ek kan nog nie kaartbetalings met {bank} opstel nie.\n\nJou kwotasies wys steeds jou bankbesonderhede, so kliënte kan jou soos gewoonlik per EFT betaal.",
   month_summary_header: '{month} vir {business}:',
   month_money_in: 'Geld in',
   month_outstanding: 'Nog uitstaande',
