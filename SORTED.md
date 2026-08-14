@@ -339,8 +339,14 @@ Business-initiated messages outside the 24h window need approved templates:
 | Template | Params | Fires when |
 |---|---|---|
 | `quote_viewed` | customer, quote no. | Customer opens the quote link |
-| `quote_paid` | amount, customer, quote no. | Paystack webhook confirms payment |
-| `month_summary` | month, money in, outstanding | 1st of month |
+| `quote_paid` | customer, amount, quote no. | Paystack webhook confirms payment |
+| `month_summary` | month, money in, outstanding | 1st of month — **not built** |
+
+Param order is the order the code passes them, not a description — `quote_paid`
+reads `{{1}} paid {{2}} for {{3}}`. An earlier version of this table had the
+first two the wrong way round; Meta does not error on a mis-ordered template, it
+just sends nonsense, so check the body text against the call site in
+`lib/quoteView.ts` rather than against this table.
 
 Existing approved templates are untouched.
 

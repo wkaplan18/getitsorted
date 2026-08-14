@@ -7,7 +7,11 @@
 
 type Bank = { name: string; branchCode: string; aliases: string[] }
 
-const BANKS: Bank[] = [
+// Exported so the Paystack side can map a stored bank name onto Paystack's own
+// bank code without duplicating the alias list. Paystack names its SA banks
+// differently to us ("First National Bank" vs "FNB"), so the match has to go
+// through these aliases rather than comparing display names.
+export const SA_BANKS: readonly Bank[] = [
   { name: 'FNB',              branchCode: '250655', aliases: ['fnb', 'first national', 'first national bank'] },
   { name: 'Standard Bank',    branchCode: '051001', aliases: ['standard', 'standard bank', 'stanbic', 'sbsa'] },
   { name: 'ABSA',             branchCode: '632005', aliases: ['absa', 'absa bank'] },
@@ -36,13 +40,13 @@ export function resolveBank(input: string): BankMatch {
   const cleaned = input.trim().toLowerCase().replace(/\s+/g, ' ')
   if (!cleaned) return { name: input.trim(), branchCode: null }
 
-  for (const bank of BANKS) {
+  for (const bank of SA_BANKS) {
     if (bank.aliases.some(alias => cleaned === alias)) {
       return { name: bank.name, branchCode: bank.branchCode }
     }
   }
   // Looser pass: "I bank with Capitec", "capitec savings account"
-  for (const bank of BANKS) {
+  for (const bank of SA_BANKS) {
     if (bank.aliases.some(alias => cleaned.includes(alias))) {
       return { name: bank.name, branchCode: bank.branchCode }
     }

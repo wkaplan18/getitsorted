@@ -44,9 +44,12 @@ export default async function PaidPage({ params }: { params: Promise<{ token: st
             <h1 className="mt-4 text-xl font-semibold tracking-[-0.01em] text-[#1A1A17]">
               Payment received
             </h1>
+            {/* The amount charged, not the quote total — those differ by the
+                card fee, and quoting the smaller one back at someone who just
+                paid the larger one invites a query about the difference. */}
             <p className="mt-2 leading-relaxed text-[#6B6B60]">
-              {fmtR(quote.total)} paid to {business.business_name} for {quote.number}.
-              They&rsquo;ve been notified.
+              {fmtR(quote.charged_total ?? quote.total)} paid to {business.business_name} for{' '}
+              {quote.number}. They&rsquo;ve been notified.
             </p>
           </>
         ) : (

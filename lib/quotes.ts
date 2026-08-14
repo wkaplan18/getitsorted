@@ -26,6 +26,13 @@ export type Quote = {
   total: number
   public_token: string
   paystack_reference: string | null
+  /**
+   * What the customer's card was actually charged — the total plus the card
+   * payment fee. Null for anything not paid by card. Never use this as the
+   * value of the job: `total` is what was quoted and what the tradesperson
+   * receives.
+   */
+  charged_total: number | null
   notes: string | null
   raw_message: string | null
   created_at: string

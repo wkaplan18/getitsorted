@@ -15,7 +15,7 @@ import { headers } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendWhatsAppTemplate } from '@/lib/whatsapp'
 import { loadQuoteByToken, markViewed } from '@/lib/quoteView'
-import { paystackConfigured } from '@/lib/paystack'
+import { paystackConfigured, grossUp, cardPaymentsEnabledFor } from '@/lib/paystack'
 import { monogram } from '@/lib/monogram'
 
 export const dynamic = 'force-dynamic'
@@ -111,7 +111,19 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
     }
   }
 
-  const canPay = !isPaid && paystackConfigured() && Number(quote.total) > 0
+  // No subaccount → no card button. His banking isn't on file, so there is
+  // nowhere to settle the money; the EFT block below is still the way to pay.
+  const canPay =
+    !isPaid &&
+    paystackConfigured() &&
+    Number(quote.total) > 0 &&
+    Boolean(business.paystack_subaccount) &&
+    cardPaymentsEnabledFor(business.owner_whatsapp)
+
+  // Worked out here rather than at Paystack so the customer sees the real
+  // number on this page. Finding out the amount grew on the payment screen is
+  // how a quote stops being trusted.
+  const fees = grossUp(Number(quote.total))
   const mark = monogram(business.business_name)
 
   return (
@@ -259,15 +271,39 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
                   defaultValue={customer?.email ?? ''}
                   className="mt-1.5 w-full rounded-lg border border-[#D6D3C9] bg-white px-3 py-2.5 text-[#1A1A17] focus-visible:border-[#B4530A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#B4530A]/40"
                 />
+                {/* Spelled out before the button, not after it. The customer
+                    agreed to the total above; anything added to it has to be
+                    shown here or the payment screen reads as a bait and switch. */}
+                <dl className="mt-4 border-t border-[#E2E0D9] pt-3 text-sm">
+                  <div className="flex justify-between py-1 text-[#6B6B60]">
+                    <dt>{isInvoice ? 'Invoice' : 'Quote'} total</dt>
+                    <dd className="tabular-nums">{fmtR(quote.total)}</dd>
+                  </div>
+                  <div className="flex justify-between py-1 text-[#6B6B60]">
+                    <dt>Card payment fee</dt>
+                    <dd className="tabular-nums">{fmtR(fees.convenienceFeeCents / 100)}</dd>
+                  </div>
+                  <div className="mt-1 flex justify-between border-t border-[#E2E0D9] pt-2 font-semibold text-[#1A1A17]">
+                    <dt>You pay</dt>
+                    <dd className="tabular-nums">{fmtR(fees.chargeCents / 100)}</dd>
+                  </div>
+                </dl>
+
                 <button
                   type="submit"
                   className="mt-3 w-full rounded-lg bg-[#B4530A] px-4 py-3 font-semibold text-white shadow-[0_1px_2px_rgba(26,26,23,0.08),0_8px_18px_-8px_rgba(180,83,10,0.55)] transition-transform duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B4530A]"
                 >
-                  Pay {fmtR(quote.total)}
+                  Pay {fmtR(fees.chargeCents / 100)}
                 </button>
               </form>
-              <p className="mt-2.5 text-center text-xs text-[#6B6B60]">
+              <p className="mt-2.5 text-center text-xs leading-relaxed text-[#6B6B60]">
                 Card, EFT or Capitec Pay · secured by Paystack
+                {business.account_number ? (
+                  <>
+                    <br />
+                    Paying by EFT below costs nothing extra.
+                  </>
+                ) : null}
               </p>
             </section>
           ) : null}

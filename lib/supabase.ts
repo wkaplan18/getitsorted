@@ -77,6 +77,11 @@ export type User = {
   onboarded_at: string | null
   quote_seq: number | null
 
+  // His Paystack subaccount — where card payments settle. Null until banking
+  // details are on file; see lib/paystackSubaccount.ts.
+  paystack_subaccount: string | null
+  paystack_subaccount_at: string | null
+
   // Position in a multi-step WhatsApp conversation. See ConvoState in lib/quotes.ts.
   convo_state: unknown | null
 }

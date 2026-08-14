@@ -14,6 +14,7 @@ import { sendWhatsApp, downloadMedia } from './whatsapp'
 import { t, toLang, langFromChoice, fmtRand, type Lang } from './i18n'
 import { applyQuoteEdit, type ExtractedBill } from './claude'
 import { resolveBank, cleanAccountNumber } from './banks'
+import { ensureSubaccount, resetSubaccount } from './paystackSubaccount'
 import {
   renderDraft, renderLines, saveQuote, setConvoState, quoteUrl,
   recentCustomers, findCustomer, normaliseName, renderForwardCard,
@@ -389,6 +390,12 @@ export async function handleConvoStep(
         return true
       }
       await supabaseAdmin.from('users').update({ account_number: account }).eq('id', user.id)
+
+      // Bank details are now complete — build his Paystack subaccount so his
+      // next quote can carry a card button. Fails soft; he is still payable by
+      // EFT either way.
+      await resetSubaccount(user.id)
+      await ensureSubaccount(user.id)
 
       const fresh = await reloadUser(user.id)
       const bankSaved = t(lang, 'bank_saved', {

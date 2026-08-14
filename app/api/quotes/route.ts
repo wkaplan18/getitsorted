@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sessionPhone } from '@/lib/session'
 import { isLang } from '@/lib/i18n'
+import { ensureSubaccount, resetSubaccount } from '@/lib/paystackSubaccount'
 
 async function userIdFor(req: NextRequest): Promise<string | null> {
   const phone = sessionPhone(req)
@@ -107,5 +108,17 @@ export async function PATCH(req: NextRequest) {
     console.error('[api/quotes] profile update failed:', error.message)
     return NextResponse.json({ error: 'update failed' }, { status: 500 })
   }
+
+  // Banking changed → the old subaccount now points at the wrong bank account.
+  // Rebuild it, or a tradesperson who switched banks keeps being paid into the
+  // account he just left. Business name is on the list too: Paystack shows it
+  // on the customer's card statement.
+  const touchedBanking = ['bank_name', 'account_number', 'business_name']
+    .some(field => field in updates)
+  if (touchedBanking) {
+    await resetSubaccount(userId)
+    await ensureSubaccount(userId)
+  }
+
   return NextResponse.json({ ok: true })
 }

@@ -21,6 +21,14 @@ export type QuoteView = {
     bank_name: string | null
     account_number: string | null
     branch_code: string | null
+    /** Null until his banking is on file — no subaccount, no card button. */
+    paystack_subaccount: string | null
+    /**
+     * The owner's raw WhatsApp number, for the card-payments allowlist. Kept
+     * separate from `phone` above: that one is formatted for display and
+     * deciding who may take money off a display string is asking for it.
+     */
+    owner_whatsapp: string | null
   }
   customer: { name: string; address: string | null; email: string | null } | null
 }
@@ -39,7 +47,7 @@ export async function loadQuoteByToken(token: string): Promise<QuoteView | null>
     supabaseAdmin.from('quote_items').select('*').eq('quote_id', quote.id).order('position'),
     supabaseAdmin
       .from('users')
-      .select('name, whatsapp_number, business_name, trade, logo_url, vat_number, bank_name, account_number, branch_code')
+      .select('name, whatsapp_number, business_name, trade, logo_url, vat_number, bank_name, account_number, branch_code, paystack_subaccount')
       .eq('id', quote.user_id)
       .maybeSingle(),
     quote.customer_id
@@ -62,6 +70,8 @@ export async function loadQuoteByToken(token: string): Promise<QuoteView | null>
       bank_name: user?.bank_name ?? null,
       account_number: user?.account_number ?? null,
       branch_code: user?.branch_code ?? null,
+      paystack_subaccount: user?.paystack_subaccount ?? null,
+      owner_whatsapp: user?.whatsapp_number ?? null,
     },
     customer: customer ? { name: customer.name, address: customer.address, email: customer.email } : null,
   }
