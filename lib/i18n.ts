@@ -77,6 +77,7 @@ export type StringKey =
   | 'fwd_open'
   | 'quote_cancelled'
   | 'quote_no_items'
+  | 'quote_no_work'
   | 'quote_needs_profile'
   // notifications
   | 'quote_viewed'
@@ -123,7 +124,11 @@ const en: Strings = {
 
   welcome: "Hi! I'm Sorted. Reply QUOTE whenever you need to send a client a quote.",
   ask_business_name: "What's your business called?",
-  ask_trade: 'Got it, {business}. What work do you do?',
+  // The examples are the whole point: without them people answer this like an
+  // interview question and write a sentence. A tester replied "Second hand
+  // shirts". One or two words is all that goes on the quote.
+  ask_trade:
+    'Got it, {business}. What work do you do?\n\nJust a word or two — plumber, electrician, cleaner, painter, nail tech, garden services.',
   ask_name: 'And your name?',
   ask_bank:
     'Which bank do you use? This is how your clients pay you.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…\n\nRather not say? Reply SKIP.',
@@ -165,6 +170,7 @@ const en: Strings = {
   fwd_open: 'View it or download the PDF here:',
   quote_cancelled: 'Quote cancelled, nothing sent.',
   quote_no_items: "I couldn't find any prices in that. Tell me what you're charging, like \"paint 3 rooms R850 each\".\n\nStuck? Reply MENU to start again.",
+  quote_no_work: "I've got the price — what's the work? Something like \"paint 3 bedrooms\" or \"clean 2 offices\".",
   quote_needs_profile: "I need your business name first before I can make a quote.",
 
   quote_viewed: '👀 {customer} opened {number}.',
@@ -220,7 +226,8 @@ const zu: Strings = {
 
   welcome: 'Sawubona! NginguSorted. Phendula ngo-QUOTE noma nini uma udinga ukuthumela ikhasimende i-quote.',
   ask_business_name: 'Libizwa ngokuthi yini ibhizinisi lakho?',
-  ask_trade: 'Ngiyabonga, {business}. Wenza msebenzi muni?',
+  ask_trade:
+    'Ngiyabonga, {business}. Wenza msebenzi muni?\n\nIgama elilodwa noma amabili nje — iplama, u-electrician, umhlanzi, umpendi, izinzipho, izingadi.',
   ask_name: 'Ngubani igama lakho?',
   ask_bank:
     'Usebenzisa liphi ibhange? Yilapho amakhasimende akho azokukhokhela khona.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…\n\nAwufuni ukusho? Phendula ngo-SKIP.',
@@ -262,6 +269,7 @@ const zu: Strings = {
   fwd_open: 'Yibuke noma ulande i-PDF lapha:',
   quote_cancelled: 'I-quote ikhanseliwe, akuthunyelwanga lutho.',
   quote_no_items: 'Angitholanga zintengo lapho. Ngitshele ukuthi ubiza malini, njenge "penda amakamelo ama-3 R850 ngalinye".\n\nUbambekile? Phendula ngo-MENU uqale kabusha.',
+  quote_no_work: 'Nginayo intengo — kodwa umsebenzi uyini? Okuthile njenge "penda amakamelo ama-3" noma "hlanza amahhovisi ama-2".',
   quote_needs_profile: 'Ngidinga igama lebhizinisi lakho kuqala ngaphambi kokwenza i-quote.',
 
   quote_viewed: '👀 U-{customer} uyivulile i-{number}.',
@@ -315,7 +323,8 @@ const af: Strings = {
 
   welcome: 'Hallo! Ek is Sorted. Antwoord KWOTASIE wanneer jy vir \'n kliënt \'n kwotasie moet stuur.',
   ask_business_name: 'Wat is jou besigheid se naam?',
-  ask_trade: 'Reg so, {business}. Watter werk doen jy?',
+  ask_trade:
+    "Reg so, {business}. Watter werk doen jy?\n\nNet 'n woord of twee — loodgieter, elektrisiën, skoonmaker, verwer, naels, tuindienste.",
   ask_name: 'En jou naam?',
   ask_bank:
     'Watter bank gebruik jy? Dit is hoe jou kliënte jou betaal.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…\n\nLiewer nie sê nie? Antwoord SKIP.',
@@ -357,6 +366,7 @@ const af: Strings = {
   fwd_open: 'Sien dit of laai die PDF hier af:',
   quote_cancelled: 'Kwotasie gekanselleer, niks gestuur nie.',
   quote_no_items: 'Ek kon geen pryse daarin kry nie. Sê my wat jy vra, soos "verf 3 kamers R850 elk".\n\nVasgevang? Antwoord MENU om weer te begin.',
+  quote_no_work: 'Ek het die prys — maar wat is die werk? Iets soos "verf 3 slaapkamers" of "maak 2 kantore skoon".',
   quote_needs_profile: 'Ek kort eers jou besigheidsnaam voor ek \'n kwotasie kan maak.',
 
   quote_viewed: '👀 {customer} het {number} oopgemaak.',

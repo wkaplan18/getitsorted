@@ -267,6 +267,13 @@ export type ConvoState = {
   // For 'disambiguate': the original message, replayed down whichever path the
   // user picks so they never have to type it twice.
   pending_message?: string
+  // For 'ask_quote_items': what they typed that didn't parse on its own.
+  //
+  // People split a job across two messages — "Second hand shirts", then
+  // "R1500" — and each half is unparseable alone: the first has no price, the
+  // second has no work. Read as a pair they are an obvious line item, so the
+  // rejected half is kept and prepended to whatever comes next.
+  pending_items_text?: string
   // Set when a profile step was re-entered from the menu rather than reached
   // during first-time setup: the same questions are asked, but the chain ends
   // in a confirmation instead of carrying on into a quote.

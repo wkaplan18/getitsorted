@@ -501,16 +501,25 @@ export async function handleConvoStep(
       const base = state.draft ?? emptyDraft()
       await sendWhatsApp(from, t(lang, 'quote_thanks'))
 
+      // Anything they typed here that didn't parse is read together with this
+      // message. "Second hand shirts" then "R1500" is one line item split over
+      // two sends, and parsing each alone rejects both — the work with no
+      // price, then the price with no work. Capped so a run of unparseable
+      // messages can't grow into a prompt of its own.
+      const carried = state.pending_items_text
+      const combined = carried ? `${carried}\n${text}`.slice(-300) : text
+
       // The work and its prices arrive as one line of natural language, so it
       // still needs parsing — applyQuoteEdit against an empty draft is exactly
       // "turn this sentence into line items", and keeps the customer we
       // already collected rather than re-deriving it from the text.
       let items
       try {
-        const parsed = await applyQuoteEdit({ ...base, line_items: [] }, text)
+        const parsed = await applyQuoteEdit({ ...base, line_items: [] }, combined)
         items = parsed.line_items
       } catch (err) {
         console.error('[convo] item parse failed:', err)
+        await setConvoState(user.id, { ...state, pending_items_text: combined })
         await sendWhatsApp(from, t(lang, 'quote_no_items'))
         return true
       }
@@ -518,12 +527,19 @@ export async function handleConvoStep(
       const priced = items.filter(i => i.unit_price > 0)
       if (priced.length === 0) {
         // Stay on this step rather than clearing state — they've already
-        // answered two questions and shouldn't lose them to a typo.
-        await sendWhatsApp(from, t(lang, 'quote_no_items'))
+        // answered two questions and shouldn't lose them to a typo — and keep
+        // what they said, so the next message completes it instead of
+        // replacing it.
+        await setConvoState(user.id, { ...state, pending_items_text: combined })
+        // Ask for the half that's actually missing. Someone who just typed
+        // "R1500" and is told no prices were found reasonably concludes it is
+        // broken and stops.
+        const gavePrice = items.length === 0 && /\d/.test(combined)
+        await sendWhatsApp(from, t(lang, gavePrice ? 'quote_no_work' : 'quote_no_items'))
         return true
       }
 
-      const draft: Draft = { ...base, line_items: items, raw_message: text }
+      const draft: Draft = { ...base, line_items: items, raw_message: combined }
       await sendQuote(user, draft, lang)
       return true
     }

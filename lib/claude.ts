@@ -87,6 +87,7 @@ Other rules:
 - payee: NEVER null for new_bill/reminder/bank_update — use the service/activity if no name (e.g. 'Ballet lessons', 'Vet', 'Dog grooming'). Null for quote_request.
 - amount: number only, strip R/ZAR. Null if not present. For quote_request leave null — the total comes from line_items.
 - line_items: ONLY for quote_request, else []. Split the work into one entry per priced thing. "paint 3 bedrooms R850 each" is quantity 3, unit_price 850. "materials R1200" is quantity 1, unit_price 1200. Never invent a price that was not stated — if a job is described with no price, use unit_price 0 and let the app ask.
+- line_items descriptions are ALWAYS written in English, whatever language the user typed. They go on a quote or invoice the customer keeps, and South African business documents are in English. "Verf 3 slaapkamers" becomes "Paint 3 bedrooms"; "penda amakamelo" becomes "Paint rooms". Translate the work, never the customer's name.
 - customer: for quote_request, the person being quoted, exactly as written. Null if not stated.
 - remind_at: for reminders like "remind me at 2pm" or "on Monday morning" resolve to an absolute datetime. If only a date is given, use 08:00. Null if no time or date is mentioned.
 - branch_code: infer from bank if not stated (FNB=250655, Standard Bank=051001, ABSA=632005, Nedbank=198765, Capitec=470010)
@@ -180,6 +181,7 @@ Apply that change and return the COMPLETE updated draft as JSON in exactly this 
 
 Rules:
 - The user may write in English, isiZulu, isiXhosa, Afrikaans, Sesotho or a mix. Understand all of them.
+- Descriptions are ALWAYS written in English whatever language the user typed, because they go on a document the customer keeps. "Verf 3 slaapkamers" becomes "Paint 3 bedrooms". Never translate the customer's name.
 - Keep every line the user did not ask you to change, exactly as it is.
 - Never invent a price. If the user adds work without a price, use unit_price 0.
 - If the instruction makes no sense as an edit, return the draft unchanged.
