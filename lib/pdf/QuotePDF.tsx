@@ -32,7 +32,10 @@ const s = StyleSheet.create({
   // Green, not the document's amber: this is the one thing on the page that
   // must not read as part of the demand for money.
   paidBanner:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, padding: 10, backgroundColor: '#EEF7EF', borderLeftWidth: 3, borderLeftColor: '#1E5B2A', borderRadius: 3 },
-  paidWord:    { fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#1E5B2A', letterSpacing: 1 },
+  // No letterSpacing: react-pdf applies it unevenly in Helvetica-Bold and
+  // "PAID" came out as "PA I D", which reads as a broken document rather than
+  // a settled one.
+  paidWord:    { fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#1E5B2A' },
   paidDate:    { fontSize: 9, color: '#1E5B2A' },
   docNum:      { fontSize: 9.5, color: INK, textAlign: 'right', marginTop: 4 },
   docMeta:     { fontSize: 7.5, color: MUTED, textAlign: 'right', marginTop: 2 },
