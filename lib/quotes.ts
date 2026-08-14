@@ -524,6 +524,17 @@ export async function createInvoiceFromQuote(
 
   const number = await nextQuoteNumber(userId, 'invoice')
 
+  // An invoice raised from a quote the customer already paid is a receipt, not
+  // a demand. Carried across, it renders "Paid on …" and shows no Pay button;
+  // left as 'sent' it would ask a paying customer for the money a second time,
+  // and show up as outstanding on the tradesperson's own dashboard.
+  //
+  // The Paystack references are deliberately NOT copied. They are how the
+  // webhook finds the quote a payment belongs to, and two rows carrying the
+  // same reference makes that lookup ambiguous — it would break settlement for
+  // the very payment this invoice is evidence of.
+  const alreadyPaid = source.status === 'paid'
+
   const { data: invoice, error } = await supabaseAdmin
     .from('quotes')
     .insert({
@@ -531,7 +542,9 @@ export async function createInvoiceFromQuote(
       customer_id: source.customer_id,
       number,
       doc_type: 'invoice',
-      status: 'sent',
+      status: alreadyPaid ? 'paid' : 'sent',
+      paid_at: alreadyPaid ? source.paid_at : null,
+      charged_total: alreadyPaid ? source.charged_total : null,
       subtotal: source.subtotal,
       vat_amount: source.vat_amount,
       total: source.total,
