@@ -29,6 +29,11 @@ const s = StyleSheet.create({
   companyMeta: { fontSize: 7.5, color: MUTED, lineHeight: 1.5 },
 
   docTitle:    { fontSize: 22, fontFamily: 'Helvetica-Bold', color: ACCENT, textAlign: 'right', letterSpacing: -0.5 },
+  // Green, not the document's amber: this is the one thing on the page that
+  // must not read as part of the demand for money.
+  paidBanner:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, padding: 10, backgroundColor: '#EEF7EF', borderLeftWidth: 3, borderLeftColor: '#1E5B2A', borderRadius: 3 },
+  paidWord:    { fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#1E5B2A', letterSpacing: 1 },
+  paidDate:    { fontSize: 9, color: '#1E5B2A' },
   docNum:      { fontSize: 9.5, color: INK, textAlign: 'right', marginTop: 4 },
   docMeta:     { fontSize: 7.5, color: MUTED, textAlign: 'right', marginTop: 2 },
 
@@ -117,6 +122,13 @@ export type QuotePDFProps = {
   accountNumber?: string | null
   branchCode?: string | null
 
+  /**
+   * Set once the document is settled. A PDF is the copy the customer files and
+   * comes back to weeks later — printing banking details and a payment
+   * reference on something already paid is how someone pays twice.
+   */
+  paidAt?: string | null
+
   customerName?: string | null
   customerAddress?: string | null
 
@@ -127,12 +139,16 @@ export function QuotePDF(props: QuotePDFProps) {
   const {
     number, docType, createdAt, subtotal, vatAmount, total, notes,
     businessName, trade, ownerName, phone, vatNumber, logoUrl,
-    bankName, accountNumber, branchCode,
+    bankName, accountNumber, branchCode, paidAt,
     customerName, customerAddress, items,
   } = props
 
   const mark = monogram(businessName)
-  const hasBank = Boolean(bankName || accountNumber)
+  const isPaid = Boolean(paidAt)
+  // Banking details are an instruction to pay. Once it's paid they are not
+  // just redundant, they are wrong — so a settled document shows the receipt
+  // line instead and gives nobody a reference to pay against.
+  const hasBank = Boolean(bankName || accountNumber) && !isPaid
   // VAT only appears when the business is actually registered. Most of these
   // users are not, and a R0.00 VAT row on their quote invites questions they
   // don't want from a customer.
@@ -181,6 +197,17 @@ export function QuotePDF(props: QuotePDFProps) {
             <Text style={s.docMeta}>{fmtDate(createdAt)}</Text>
           </View>
         </View>
+
+        {/* Up top, where someone glancing at the page decides what it is
+            before reading a line of it. */}
+        {isPaid ? (
+          <View style={s.paidBanner}>
+            <Text style={s.paidWord}>PAID</Text>
+            <Text style={s.paidDate}>
+              Received {fmtDate(paidAt!)} — thank you. No payment is due.
+            </Text>
+          </View>
+        ) : null}
 
         {customerName ? (
           <View style={s.infoBox}>

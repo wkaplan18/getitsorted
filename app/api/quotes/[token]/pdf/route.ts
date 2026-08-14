@@ -49,6 +49,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
       bankName: business.bank_name,
       accountNumber: business.account_number,
       branchCode: business.branch_code,
+      // Drives the PAID banner and suppresses the banking block. Read from
+      // paid_at rather than status so a document is only ever marked settled
+      // when there is a date to put on it.
+      paidAt: quote.paid_at,
 
       customerName: customer?.name ?? null,
       customerAddress: customer?.address ?? null,
