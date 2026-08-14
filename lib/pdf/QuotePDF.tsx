@@ -22,7 +22,12 @@ const s = StyleSheet.create({
 
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
   brandLeft:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, maxWidth: 300 },
-  logo:        { width: 52, height: 52, objectFit: 'contain' },
+  // Landscape box, not square. Almost every real logo is wider than it is
+  // tall, and a square container scales it to fit the WIDTH — a 3:2 logo came
+  // out 52x35, two thirds of the height it was given, looking shrunken next to
+  // the business name. Pinned left so a square logo doesn't float in the
+  // middle of the space reserved for a wide one.
+  logo:        { width: 116, height: 56, objectFit: 'contain', objectPositionX: 0 },
   mark:        { width: 52, height: 52, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   markText:    { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#FFFFFF', letterSpacing: 0.5 },
   company:     { fontSize: 15, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 3 },

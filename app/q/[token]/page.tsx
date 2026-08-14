@@ -138,10 +138,13 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
             <div className="flex min-w-0 items-start gap-3">
               {business.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
+                // Height-constrained, width free. A square box scales a wide
+                // logo down to fit the width and wastes a third of its height;
+                // capped so a very wide one can't crowd out the business name.
                 <img
                   src={business.logo_url}
                   alt=""
-                  className="h-14 w-14 shrink-0 rounded-lg object-contain"
+                  className="h-14 w-auto max-w-[160px] shrink-0 object-contain object-left"
                 />
               ) : (
                 <div
