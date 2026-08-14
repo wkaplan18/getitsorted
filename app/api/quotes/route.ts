@@ -24,6 +24,13 @@ export async function GET(req: NextRequest) {
   const userId = await userIdFor(req)
   if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
+  // Backfill. Subaccounts are otherwise only built when banking CHANGES, which
+  // silently excludes everyone who filled their details in before this existed
+  // — they would never get a card button without going and editing a field for
+  // no reason. Cheap to call: it returns immediately once a subaccount exists,
+  // and before touching Paystack at all for anyone off the allowlist.
+  await ensureSubaccount(userId)
+
   const [{ data: quotes }, { data: profile }] = await Promise.all([
     supabaseAdmin
       .from('quotes')
