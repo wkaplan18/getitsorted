@@ -5,7 +5,7 @@ import { extractBillFromText, extractBillFromPDF, extractBillFromImage, Extracte
 import { sendWhatsApp, sendWhatsAppTemplate, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation, formatReminderConfirmation } from '@/lib/whatsapp'
 import {
   handleConvoStep, pendingDisambiguation, awaitingDisambiguation, startLanguagePicker, startGuidedQuote, startQuote, askBillOrQuote,
-  showMenu, startInvoice, inConversation, CONVO_USER_COLUMNS, type ConvoUser,
+  showMenu, startInvoice, startEdit, inConversation, CONVO_USER_COLUMNS, type ConvoUser,
 } from '@/lib/convo'
 import { setConvoState } from '@/lib/quotes'
 import { recentQuotesMessage, pendingBillsMessage, issueLoginCode } from '@/lib/replies'
@@ -60,6 +60,7 @@ const HELP_MESSAGE = `Here's what I can do:
 
 *Sending quotes*
 🧾 *QUOTE* — I'll ask you three quick questions and send back a PDF quote with your logo, ready to forward to your client.
+✏️ *EDIT* — something wrong on the last quote? I'll fix it, same quote number.
 🧮 *INVOICE* — turn a quote you've already sent into an invoice, same figures.
 📋 *QUOTES* — your recent quotes
 
@@ -232,6 +233,18 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
       return true
     }
     await startGuidedQuote(target, QUOTE_TRIGGER_LANG[cmd] ?? null)
+    return true
+  }
+
+  // "EDIT" — fix the document he just sent, in place. Only ever on the
+  // explicit keyword: after a quote goes out the conversation is cleared, and
+  // treating whatever he says next as an edit would swallow the next job.
+  if (cmd === 'edit' || cmd === 'i-edit' || cmd === 'shintsha' || cmd === 'wysig' || cmd === 'verander') {
+    if (!user) {
+      await sendWhatsApp(from, t(lang, 'edit_none'))
+      return true
+    }
+    await startEdit(user, lang)
     return true
   }
 

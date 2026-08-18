@@ -17,7 +17,7 @@ import { applyQuoteEdit, type ExtractedBill } from './claude'
 import { resolveBank, cleanAccountNumber } from './banks'
 import { ensureSubaccount, resetSubaccount } from './paystackSubaccount'
 import {
-  renderDraft, renderLines, saveQuote, setConvoState, quoteUrl,
+  renderDraft, renderLines, saveQuote, updateQuote, latestQuoteForEdit, setConvoState, quoteUrl,
   recentCustomers, findCustomer, normaliseName, renderForwardCard,
   invoiceableQuotes, createInvoiceFromQuote,
   type ConvoState, type Draft,
@@ -568,7 +568,13 @@ export async function handleConvoStep(
       }
 
       if (SEND_WORDS.has(lower)) {
-        await sendQuote(user, draft, lang)
+        // Entered by EDIT rather than by a new quote: rewrite the document he
+        // already has rather than minting a second one for the same job.
+        if (state.editing_quote_id) {
+          await sendEditedQuote(user, draft, lang, state.editing_quote_id)
+        } else {
+          await sendQuote(user, draft, lang)
+        }
         return true
       }
 
@@ -580,7 +586,7 @@ export async function handleConvoStep(
       try {
         const updated = await applyQuoteEdit(draft, text)
         const next: Draft = { ...updated, raw_message: draft.raw_message }
-        await setConvoState(user.id, { step: 'confirm_quote', draft: next })
+        await setConvoState(user.id, { step: 'confirm_quote', draft: next, editing_quote_id: state.editing_quote_id })
         await sendWhatsApp(from, `${t(lang, 'quote_updated')}\n\n${renderDraft(next, lang, isVatRegistered(user))}`)
       } catch (err) {
         console.error('[convo] quote edit failed:', err)
@@ -823,6 +829,50 @@ export async function startQuote(
   await sendWhatsApp(from, renderDraft(draft, lang, isVatRegistered(user)))
 }
 
+/**
+ * The EDIT command — fix the document he just sent, in place.
+ *
+ * Reuses the confirm_quote loop the free-form path already runs on, so there
+ * is no second editor to keep in step with the first: same preview, same plain
+ * language changes, same SEND.
+ */
+export async function startEdit(user: ConvoUser, lang: Lang): Promise<void> {
+  const from = user.whatsapp_number
+  const latest = await latestQuoteForEdit(user.id)
+
+  if (!latest) {
+    await sendWhatsApp(from, t(lang, 'edit_none'))
+    return
+  }
+
+  // A paid document is the record of a transaction, not a draft. Editing the
+  // amount on one is not a correction, it is a different document.
+  if (latest.quote.status === 'paid') {
+    await sendWhatsApp(from, t(lang, 'edit_paid', { number: latest.quote.number }))
+    return
+  }
+
+  const draft: Draft = {
+    customer: latest.customerName,
+    customer_address: latest.customerAddress,
+    line_items: latest.items.map(item => ({
+      description: item.description,
+      quantity: Number(item.quantity),
+      unit_price: Number(item.unit_price),
+    })),
+  }
+
+  await setConvoState(user.id, {
+    step: 'confirm_quote',
+    draft,
+    editing_quote_id: latest.quote.id,
+  })
+  await sendWhatsApp(
+    from,
+    `${t(lang, 'edit_intro', { number: latest.quote.number })}\n\n${renderDraft(draft, lang, isVatRegistered(user))}`,
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Sending
 // ---------------------------------------------------------------------------
@@ -860,11 +910,62 @@ async function sendQuote(user: ConvoUser, draft: Draft, lang: Lang): Promise<voi
       renderLines(draft, lang, isVatRegistered(user)),
       t(lang, 'quote_sent', { number: saved.quote.number }),
       t(lang, 'quote_forward', { customer: draft.customer ?? 'your customer' }),
+      t(lang, 'quote_edit_hint'),
     ].join('\n\n'),
   )
 
   await sendWhatsApp(from, forwardCardFor(user, {
     docType: 'quote',
+    number: saved.quote.number,
+    customer: draft.customer,
+    total: Number(saved.quote.total),
+    token: saved.quote.public_token,
+  }))
+}
+
+/**
+ * SEND, when the confirm loop was entered by EDIT.
+ *
+ * Same shape as sendQuote and deliberately so — including sending the forward
+ * card again. The card he already has prints the old total in its text, and
+ * nothing stops him forwarding that one; the link inside it would show the new
+ * figures while the message above it showed the old, which is exactly the kind
+ * of mismatch a client notices.
+ */
+async function sendEditedQuote(
+  user: ConvoUser,
+  draft: Draft,
+  lang: Lang,
+  quoteId: string,
+): Promise<void> {
+  const from = user.whatsapp_number
+
+  const saved = await updateQuote({
+    userId: user.id,
+    quoteId,
+    draft,
+    vatRegistered: isVatRegistered(user),
+  })
+
+  if (!saved) {
+    await sendWhatsApp(from, t(lang, 'save_failed'))
+    return
+  }
+
+  await setConvoState(user.id, null)
+
+  await sendWhatsApp(
+    from,
+    [
+      renderLines(draft, lang, isVatRegistered(user)),
+      t(lang, 'quote_edit_sent', { number: saved.quote.number }),
+      t(lang, 'quote_forward', { customer: draft.customer ?? 'your customer' }),
+      t(lang, 'quote_edit_hint'),
+    ].join('\n\n'),
+  )
+
+  await sendWhatsApp(from, forwardCardFor(user, {
+    docType: saved.quote.doc_type,
     number: saved.quote.number,
     customer: draft.customer,
     total: Number(saved.quote.total),

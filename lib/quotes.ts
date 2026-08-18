@@ -287,6 +287,10 @@ export type ConvoState = {
   edit?: 'business' | 'bank'
   // For the client-edit flow: which saved client is being changed.
   client_id?: string
+  // Set when 'confirm_quote' was entered by EDIT rather than by a new quote.
+  // Its presence is what makes SEND rewrite the existing document instead of
+  // creating a second one.
+  editing_quote_id?: string
 }
 
 export async function setConvoState(userId: string, state: ConvoState | null): Promise<void> {
@@ -464,6 +468,120 @@ export async function saveQuote(opts: {
     // A quote with no lines is worse than no quote — roll back rather than
     // handing the user a link to an empty document.
     await supabaseAdmin.from('quotes').delete().eq('id', quote.id)
+    return null
+  }
+
+  return { quote: quote as Quote, items: (items ?? []) as QuoteItem[] }
+}
+
+/**
+ * The document EDIT works on: whatever this user most recently created.
+ *
+ * Deliberately not a numbered picker like invoiceableQuotes — EDIT is reached
+ * seconds after sending, and "the one I just made" is what it means almost
+ * every time. Loaded as separate queries rather than an FK join, matching
+ * loadQuoteByToken: joins here come back as arrays and read as null if you
+ * treat them as objects.
+ */
+export async function latestQuoteForEdit(userId: string): Promise<{
+  quote: Quote
+  items: QuoteItem[]
+  customerName: string | null
+  customerAddress: string | null
+} | null> {
+  const { data: quote } = await supabaseAdmin
+    .from('quotes')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!quote) return null
+
+  const [{ data: items }, { data: customer }] = await Promise.all([
+    supabaseAdmin.from('quote_items').select('*').eq('quote_id', quote.id).order('position'),
+    quote.customer_id
+      ? supabaseAdmin.from('customers').select('name, address').eq('id', quote.customer_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  return {
+    quote: quote as Quote,
+    items: (items ?? []) as QuoteItem[],
+    customerName: customer?.name ?? null,
+    customerAddress: customer?.address ?? null,
+  }
+}
+
+/**
+ * Rewrites a quote in place: new figures, same number, same public token.
+ *
+ * Same link on purpose. A corrected quote issued under a fresh number leaves
+ * the original live and payable, and the client can end up holding two
+ * documents for one job — worse than the mistake being fixed.
+ */
+export async function updateQuote(opts: {
+  userId: string
+  quoteId: string
+  draft: Draft
+  vatRegistered: boolean
+}): Promise<{ quote: Quote; items: QuoteItem[] } | null> {
+  const { subtotal, vat_amount, total } = totals(opts.draft.line_items, opts.vatRegistered)
+
+  const { data: quote, error } = await supabaseAdmin
+    .from('quotes')
+    .update({ subtotal, vat_amount, total })
+    .eq('id', opts.quoteId)
+    .eq('user_id', opts.userId)   // scoped to the owner: an id is not authority to edit
+    .select()
+    .single()
+
+  if (error || !quote) {
+    console.error('[quotes] quote update failed:', error?.message)
+    return null
+  }
+
+  // Kept so the old lines can go back if the replacement fails. The model
+  // returns the whole item set on every edit, so these are replaced wholesale
+  // rather than diffed — which means a failed insert would otherwise leave a
+  // priced quote with no lines behind it.
+  const { data: previous } = await supabaseAdmin
+    .from('quote_items')
+    .select('*')
+    .eq('quote_id', opts.quoteId)
+    .order('position')
+
+  const { error: clearError } = await supabaseAdmin
+    .from('quote_items')
+    .delete()
+    .eq('quote_id', opts.quoteId)
+
+  if (clearError) {
+    console.error('[quotes] quote_items clear failed:', clearError.message)
+    return null
+  }
+
+  const rows = opts.draft.line_items.map((item, i) => ({
+    quote_id: opts.quoteId,
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    line_total: lineTotal(item),
+    position: i,
+  }))
+
+  const { data: items, error: itemsError } = await supabaseAdmin
+    .from('quote_items')
+    .insert(rows)
+    .select()
+
+  if (itemsError) {
+    console.error('[quotes] quote_items replace failed:', itemsError.message)
+    if (previous?.length) {
+      const { error: restoreError } = await supabaseAdmin.from('quote_items').insert(previous)
+      if (restoreError) console.error('[quotes] restore of old lines FAILED:', restoreError.message)
+    }
     return null
   }
 

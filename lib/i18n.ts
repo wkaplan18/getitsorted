@@ -138,6 +138,12 @@ export type StringKey =
   | 'edit_client_name'
   | 'edit_client_address'
   | 'edit_client_saved'
+  // editing a quote that has already been created
+  | 'quote_edit_hint'
+  | 'edit_intro'
+  | 'edit_none'
+  | 'edit_paid'
+  | 'quote_edit_sent'
   // media we can't read
   | 'voice_unsupported'
   | 'voice_unsupported_new'
@@ -225,6 +231,13 @@ const en: Strings = {
   quote_no_work: "I've got the price — what's the work? Something like \"paint 3 bedrooms\" or \"clean 2 offices\".",
   quote_needs_profile: "I need your business name first before I can make a quote.",
 
+  // Goes on the message carrying the figures, never after the forward card —
+  // that card is the one he presses and forwards, so it has to stay last.
+  quote_edit_hint: 'Something wrong? Reply EDIT.',
+  edit_intro: 'Editing {number}. Tell me what to change.',
+  edit_none: "You haven't made a quote yet.",
+  edit_paid: '{number} has already been paid, so I can\'t change it.',
+  quote_edit_sent: '{number} updated 👇',
   quote_viewed: '👀 {customer} opened {number}.',
   quote_paid: "💰 {customer} paid {amount} for {number}.\nMoney's on its way to your account.",
   invoice_created: 'Nice one. Turned it into invoice {number}.',
@@ -265,7 +278,7 @@ const en: Strings = {
   edit_client_saved: 'Saved — {customer}.',
 
   help:
-    'Here\'s what I can do:\n\n• MENU — everything, as a numbered list\n• Send me a job → I make a quote\n• Send me a bill → I track it and remind you\n• QUOTES — your recent quotes\n• BILLS — what you owe\n• BANK — change your banking details\n• LOGIN — get your dashboard code\n• LANGUAGE — change language\n• STOP — pause messages',
+    'Here\'s what I can do:\n\n• MENU — everything, as a numbered list\n• Send me a job → I make a quote\n• Send me a bill → I track it and remind you\n• EDIT — fix the last quote you sent\n• QUOTES — your recent quotes\n• BILLS — what you owe\n• BANK — change your banking details\n• LOGIN — get your dashboard code\n• LANGUAGE — change language\n• STOP — pause messages',
   not_understood: "I didn't quite get that. Reply MENU to see what I can do.",
   save_failed: "Something went wrong saving that. Please send it again.",
   cancelled: 'Cancelled. Reply MENU to see everything I can do.',
@@ -333,6 +346,11 @@ const zu: Strings = {
   quote_no_work: 'Nginayo intengo — kodwa umsebenzi uyini? Okuthile njenge "penda amakamelo ama-3" noma "hlanza amahhovisi ama-2".',
   quote_needs_profile: 'Ngidinga igama lebhizinisi lakho kuqala ngaphambi kokwenza i-quote.',
 
+  quote_edit_hint: 'Kukhona okungalungile? Phendula ngo-EDIT.',
+  edit_intro: 'Sishintsha i-{number}. Ngitshele ukuthi yini okumele ishintshe.',
+  edit_none: 'Awukakenzi i-quote.',
+  edit_paid: 'I-{number} isikhokhelwe, ngakho angikwazi ukuyishintsha.',
+  quote_edit_sent: 'I-{number} ibuyekeziwe 👇',
   quote_viewed: '👀 U-{customer} uyivulile i-{number}.',
   quote_paid: '💰 U-{customer} ukhokhe u-{amount} we-{number}.\nImali isendleleni eya ku-akhawunti yakho.',
   invoice_created: 'Kuhle. Ngiyiguqule yaba yi-invoice {number}.',
@@ -371,7 +389,7 @@ const zu: Strings = {
   edit_client_saved: 'Kugciniwe — {customer}.',
 
   help:
-    'Nakhu engingakwenza:\n\n• MENU — konke, ohlwini olunezinombolo\n• Ngithumele umsebenzi → ngenza i-quote\n• Ngithumele ibhili → ngiyaligcina ngikukhumbuze\n• QUOTES — ama-quote akho akamuva\n• BILLS — okumele ukukhokhe\n• BANK — shintsha imininingwane yasebhange\n• LOGIN — thola ikhodi ye-dashboard\n• LANGUAGE — shintsha ulimi\n• STOP — misa imiyalezo',
+    'Nakhu engingakwenza:\n\n• MENU — konke, ohlwini olunezinombolo\n• Ngithumele umsebenzi → ngenza i-quote\n• Ngithumele ibhili → ngiyaligcina ngikukhumbuze\n• EDIT — lungisa i-quote yakho yokugcina\n• QUOTES — ama-quote akho akamuva\n• BILLS — okumele ukukhokhe\n• BANK — shintsha imininingwane yasebhange\n• LOGIN — thola ikhodi ye-dashboard\n• LANGUAGE — shintsha ulimi\n• STOP — misa imiyalezo',
   not_understood: 'Angizwanga kahle. Phendula ngo-MENU ubone engingakwenza.',
   save_failed: 'Kube nenkinga ekugcineni lokho. Sicela ukuthumele futhi.',
   cancelled: 'Kukhanseliwe. Phendula ngo-MENU ubone konke engingakwenza.',
@@ -435,6 +453,11 @@ const af: Strings = {
   quote_no_work: 'Ek het die prys — maar wat is die werk? Iets soos "verf 3 slaapkamers" of "maak 2 kantore skoon".',
   quote_needs_profile: 'Ek kort eers jou besigheidsnaam voor ek \'n kwotasie kan maak.',
 
+  quote_edit_hint: 'Iets verkeerd? Antwoord EDIT.',
+  edit_intro: 'Ons verander {number}. Sê my wat moet verander.',
+  edit_none: 'Jy het nog nie \'n kwotasie gemaak nie.',
+  edit_paid: '{number} is reeds betaal, so ek kan dit nie verander nie.',
+  quote_edit_sent: '{number} opgedateer 👇',
   quote_viewed: '👀 {customer} het {number} oopgemaak.',
   quote_paid: '💰 {customer} het {amount} vir {number} betaal.\nDie geld is op pad na jou rekening.',
   invoice_created: 'Mooi so. Dit is nou faktuur {number}.',
@@ -473,7 +496,7 @@ const af: Strings = {
   edit_client_saved: 'Gestoor — {customer}.',
 
   help:
-    'Dis wat ek kan doen:\n\n• MENU — alles, as \'n genommerde lys\n• Stuur my \'n werk → ek maak \'n kwotasie\n• Stuur my \'n rekening → ek hou dit by en herinner jou\n• QUOTES — jou onlangse kwotasies\n• BILLS — wat jy skuld\n• BANK — verander jou bankbesonderhede\n• LOGIN — kry jou dashboard-kode\n• LANGUAGE — verander taal\n• STOP — stop boodskappe',
+    'Dis wat ek kan doen:\n\n• MENU — alles, as \'n genommerde lys\n• Stuur my \'n werk → ek maak \'n kwotasie\n• Stuur my \'n rekening → ek hou dit by en herinner jou\n• EDIT — verander jou laaste kwotasie\n• QUOTES — jou onlangse kwotasies\n• BILLS — wat jy skuld\n• BANK — verander jou bankbesonderhede\n• LOGIN — kry jou dashboard-kode\n• LANGUAGE — verander taal\n• STOP — stop boodskappe',
   not_understood: 'Ek het dit nie heeltemal verstaan nie. Antwoord MENU om te sien wat ek kan doen.',
   save_failed: 'Iets het verkeerd geloop met stoor. Stuur dit asseblief weer.',
   cancelled: 'Gekanselleer. Antwoord MENU om te sien wat ek alles kan doen.',
