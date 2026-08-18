@@ -50,6 +50,16 @@ function readState(user: ConvoUser): ConvoState | null {
   return step ? (state as ConvoState) : null
 }
 
+/**
+ * Is this user part-way through a guided conversation (onboarding, a quote, the
+ * menu)? The webhook asks before it answers a message it can't read: mid-flow
+ * the reply has to point at the question he was already on, and his draft has
+ * to survive it.
+ */
+export function inConversation(user: ConvoUser): boolean {
+  return readState(user) !== null
+}
+
 function isVatRegistered(user: ConvoUser): boolean {
   return Boolean(user.vat_number)
 }

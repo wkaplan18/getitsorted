@@ -138,6 +138,9 @@ export type StringKey =
   | 'edit_client_name'
   | 'edit_client_address'
   | 'edit_client_saved'
+  // media we can't read
+  | 'voice_unsupported'
+  | 'voice_unsupported_new'
   // generic
   | 'help'
   | 'not_understood'
@@ -148,13 +151,20 @@ const en: Strings = {
   language_set: "Done, I'll reply in English from now on.",
 
   welcome: "Hi! I'm Sorted. Reply QUOTE whenever you need to send a client a quote.",
-  ask_business_name: "What's your business called?",
+  // Every other onboarding question has a way out; this one didn't, and it is
+  // the first thing a brand-new user is ever asked. Plenty of one-man trades
+  // have no registered name and stall here.
+  ask_business_name:
+    "What's your business called?\n\nNo business name? Just send your own name — that's what goes on the quote.",
   // The examples are the whole point: without them people answer this like an
   // interview question and write a sentence. A tester replied "Second hand
   // shirts". One or two words is all that goes on the quote.
   ask_trade:
     'Got it, {business}. What work do you do?\n\nJust a word or two — plumber, electrician, cleaner, painter, nail tech, garden services.',
-  ask_name: 'And your name?',
+  // "And your name?" straight after the business name reads as "again?". It is
+  // also a real field: ownerName prints in the PDF header beside trade and
+  // phone, so the payoff is worth naming.
+  ask_name: "And your own name?\n\nIt goes on the quote under your business name.",
   ask_bank:
     'Which bank do you use?\n\nThis goes on every quote — it is how your clients pay you, so I need it before I can make one.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…',
   ask_account: 'And your account number?\n\nThis is what your clients type in when they pay you.',
@@ -172,20 +182,33 @@ const en: Strings = {
   ask_client_pick:
     "Step 1 of 3 — Who is this quote for?\n\n{list}\n\nReply with a number, or type a new client's name.",
   client_known: 'Got it — {customer}. I already have their details.',
-  ask_client_address: "Step 2 of 3 — What is their address?\n\nDon't have it? Reply N/A.",
+  // Read as "where is the job?" unless told otherwise — but this is saved to
+  // customers.address and reused on every future quote for them (a repeat
+  // client skips this step entirely). Someone who answers with a job site
+  // silently pins that site to the client forever.
+  ask_client_address:
+    "Step 2 of 3 — What's your client's address?\n\nI'll save it and use it next time. Don't have it? Reply N/A.",
+  // Asked as two questions, it got one answer back — which is what
+  // quote_no_work, quote_no_items and pending_items_text all exist to repair.
+  // The example now carries an instruction about the shape of the answer
+  // rather than just illustrating one.
   ask_quote_items:
-    'Step 3 of 3 — What work are you doing, and what are you charging?\n\nFor example:\n"Paint 3 bedrooms R850 each, materials R1200"',
+    'Step 3 of 3 — What\'s the job, and what\'s your price?\n\nEach part with its price, like this:\n"Paint 3 bedrooms R850 each, materials R1200"',
   // Used when the client was already on file, so step 2 never happened.
   // Counting "1 of 3" then "3 of 3" at someone makes a deliberate shortcut
   // look like a fault.
   ask_quote_items_short:
-    'Last step — What work are you doing, and what are you charging?\n\nFor example:\n"Paint 3 bedrooms R850 each, materials R1200"',
+    'Last step — What\'s the job, and what\'s your price?\n\nEach part with its price, like this:\n"Paint 3 bedrooms R850 each, materials R1200"',
   quote_thanks: 'Thanks. Putting your quote together now…',
 
   quote_header: "Here's the quote:",
   quote_for: 'FOR: {customer}',
   quote_total: 'TOTAL',
-  quote_confirm: 'Reply SEND to make the PDF, or tell me what to change.',
+  // "tell me what to change" is the most impressive thing Sorted does and a
+  // first-timer has no idea it is possible. Doubles as the empty-message reply
+  // on this step, so it has to stand alone.
+  quote_confirm:
+    'Reply SEND to make the PDF.\n\nNeed a change? Just say it — like "materials R1500" or "add gate R400".',
   quote_updated: 'Updated:',
   quote_sent: '{number} is ready 👇',
   quote_forward:
@@ -246,16 +269,24 @@ const en: Strings = {
   not_understood: "I didn't quite get that. Reply MENU to see what I can do.",
   save_failed: "Something went wrong saving that. Please send it again.",
   cancelled: 'Cancelled. Reply MENU to see everything I can do.',
+  // Two versions on purpose. Mid-conversation the question he was answering is
+  // the message directly above this one, so it doesn't need repeating. Cold,
+  // he needs a way in — and the word named here has to be one the command
+  // handler actually accepts, per language.
+  voice_unsupported: "I can't listen to voice notes yet 🙈 — please type it out instead.",
+  voice_unsupported_new:
+    "I can't listen to voice notes yet 🙈 — please type it out.\n\nReply QUOTE to start a new quote.",
 }
 
 const zu: Strings = {
   language_set: 'Kulungile, ngizophendula ngesiZulu kusukela manje.',
 
   welcome: 'Sawubona! NginguSorted. Phendula ngo-QUOTE noma nini uma udinga ukuthumela ikhasimende i-quote.',
-  ask_business_name: 'Libizwa ngokuthi yini ibhizinisi lakho?',
+  ask_business_name:
+    'Libizwa ngokuthi yini ibhizinisi lakho?\n\nAwunalo igama lebhizinisi? Thumela igama lakho nje — yilona elizovela ku-quote.',
   ask_trade:
     'Ngiyabonga, {business}. Wenza msebenzi muni?\n\nIgama elilodwa noma amabili nje — iplama, u-electrician, umhlanzi, umpendi, izinzipho, izingadi.',
-  ask_name: 'Ngubani igama lakho?',
+  ask_name: 'Ngubani igama lakho siqu?\n\nLivela ku-quote ngaphansi kwegama lebhizinisi lakho.',
   ask_bank:
     'Usebenzisa liphi ibhange?\n\nLokhu kuvela kuwo wonke ama-quote — yindlela amakhasimende akho akukhokhela ngayo, ngakho ngiyakudinga ngaphambi kokwenza i-quote.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…',
   ask_account: 'Ithini inombolo ye-akhawunti yakho?\n\nYileyo amakhasimende akho ayifakayo lapho ekukhokhela.',
@@ -273,17 +304,19 @@ const zu: Strings = {
   ask_client_pick:
     'Isinyathelo 1 kwezi-3 — Le quote ingeyabani?\n\n{list}\n\nPhendula ngenombolo, noma ubhale igama lekhasimende elisha.',
   client_known: 'Ngiyabonga — {customer}. Sengivele nginayo imininingwane yabo.',
-  ask_client_address: 'Isinyathelo 2 kwezi-3 — Ithini ikheli labo?\n\nAwunalo? Phendula ngo-N/A.',
+  ask_client_address:
+    'Isinyathelo 2 kwezi-3 — Lithini ikheli lekhasimende lakho?\n\nNgizoligcina ngilisebenzise futhi ngokuzayo. Awunalo? Phendula ngo-N/A.',
   ask_quote_items:
-    'Isinyathelo 3 kwezi-3 — Uwenza muphi umsebenzi, futhi ubiza malini?\n\nIsibonelo:\n"Penda amakamelo ama-3 R850 ngalinye, izinto R1200"',
+    'Isinyathelo 3 kwezi-3 — Uyini umsebenzi, futhi yimalini intengo yakho?\n\nIngxenye ngayinye nentengo yayo, kanje:\n"Penda amakamelo ama-3 R850 ngalinye, izinto R1200"',
   ask_quote_items_short:
-    'Isinyathelo sokugcina — Uwenza muphi umsebenzi, futhi ubiza malini?\n\nIsibonelo:\n"Penda amakamelo ama-3 R850 ngalinye, izinto R1200"',
+    'Isinyathelo sokugcina — Uyini umsebenzi, futhi yimalini intengo yakho?\n\nIngxenye ngayinye nentengo yayo, kanje:\n"Penda amakamelo ama-3 R850 ngalinye, izinto R1200"',
   quote_thanks: 'Ngiyabonga. Ngiyalungisa i-quote yakho manje…',
 
   quote_header: 'Nayi i-quote:',
   quote_for: 'EYA: {customer}',
   quote_total: 'ISAMBA',
-  quote_confirm: 'Phendula ngo-SEND ukuze ngenze i-PDF, noma ungitshele ukuthi ngishintshe ini.',
+  quote_confirm:
+    'Phendula ngo-SEND ukuze ngenze i-PDF.\n\nUdinga ushintsho? Ngitshele nje — isb. "izinto R1500" noma "faka igede R400".',
   quote_updated: 'Kubuyekeziwe:',
   quote_sent: 'I-{number} isilungile 👇',
   quote_forward:
@@ -342,16 +375,20 @@ const zu: Strings = {
   not_understood: 'Angizwanga kahle. Phendula ngo-MENU ubone engingakwenza.',
   save_failed: 'Kube nenkinga ekugcineni lokho. Sicela ukuthumele futhi.',
   cancelled: 'Kukhanseliwe. Phendula ngo-MENU ubone konke engingakwenza.',
+  voice_unsupported: 'Angikwazi ukulalela ama-voice note okwamanje 🙈 — ngicela ukuthayiphe.',
+  voice_unsupported_new:
+    'Angikwazi ukulalela ama-voice note okwamanje 🙈 — ngicela ukuthayiphe.\n\nPhendula ngo-I-QUOTE ukuqala i-quote entsha.',
 }
 
 const af: Strings = {
   language_set: 'Reg so, ek antwoord voortaan in Afrikaans.',
 
   welcome: 'Hallo! Ek is Sorted. Antwoord KWOTASIE wanneer jy vir \'n kliënt \'n kwotasie moet stuur.',
-  ask_business_name: 'Wat is jou besigheid se naam?',
+  ask_business_name:
+    "Wat is jou besigheid se naam?\n\nGeen besigheidsnaam nie? Stuur net jou eie naam — dis wat op die kwotasie verskyn.",
   ask_trade:
     "Reg so, {business}. Watter werk doen jy?\n\nNet 'n woord of twee — loodgieter, elektrisiën, skoonmaker, verwer, naels, tuindienste.",
-  ask_name: 'En jou naam?',
+  ask_name: "En jou eie naam?\n\nDit verskyn op die kwotasie onder jou besigheid se naam.",
   ask_bank:
     'Watter bank gebruik jy?\n\nDit verskyn op elke kwotasie — dis hoe jou kliënte jou betaal, so ek het dit nodig voordat ek een kan maak.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…',
   ask_account: 'En jou rekeningnommer?\n\nDis wat jou kliënte intik wanneer hulle jou betaal.',
@@ -369,17 +406,19 @@ const af: Strings = {
   ask_client_pick:
     "Stap 1 van 3 — Vir wie is hierdie kwotasie?\n\n{list}\n\nAntwoord met 'n nommer, of tik 'n nuwe kliënt se naam.",
   client_known: 'Reg so — {customer}. Ek het reeds hulle besonderhede.',
-  ask_client_address: 'Stap 2 van 3 — Wat is hulle adres?\n\nHet jy dit nie? Antwoord N/A.',
+  ask_client_address:
+    "Stap 2 van 3 — Wat is jou kliënt se adres?\n\nEk stoor dit en gebruik dit volgende keer. Het jy dit nie? Antwoord N/A.",
   ask_quote_items:
-    'Stap 3 van 3 — Watter werk doen jy, en wat vra jy?\n\nByvoorbeeld:\n"Verf 3 slaapkamers R850 elk, materiaal R1200"',
+    'Stap 3 van 3 — Wat is die werk, en wat is jou prys?\n\nElke deel met sy prys, soos hierdie:\n"Verf 3 slaapkamers R850 elk, materiaal R1200"',
   ask_quote_items_short:
-    'Laaste stap — Watter werk doen jy, en wat vra jy?\n\nByvoorbeeld:\n"Verf 3 slaapkamers R850 elk, materiaal R1200"',
+    'Laaste stap — Wat is die werk, en wat is jou prys?\n\nElke deel met sy prys, soos hierdie:\n"Verf 3 slaapkamers R850 elk, materiaal R1200"',
   quote_thanks: 'Dankie. Ek stel nou jou kwotasie saam…',
 
   quote_header: 'Hier is die kwotasie:',
   quote_for: 'VIR: {customer}',
   quote_total: 'TOTAAL',
-  quote_confirm: 'Antwoord SEND om die PDF te maak, of sê my wat om te verander.',
+  quote_confirm:
+    'Antwoord SEND om die PDF te maak.\n\nWil jy iets verander? Sê dit net — bv. "materiaal R1500" of "voeg hek by R400".',
   quote_updated: 'Opgedateer:',
   quote_sent: '{number} is gereed 👇',
   quote_forward:
@@ -438,6 +477,9 @@ const af: Strings = {
   not_understood: 'Ek het dit nie heeltemal verstaan nie. Antwoord MENU om te sien wat ek kan doen.',
   save_failed: 'Iets het verkeerd geloop met stoor. Stuur dit asseblief weer.',
   cancelled: 'Gekanselleer. Antwoord MENU om te sien wat ek alles kan doen.',
+  voice_unsupported: 'Ek kan nog nie na stemnotas luister nie 🙈 — tik dit asseblief eerder uit.',
+  voice_unsupported_new:
+    "Ek kan nog nie na stemnotas luister nie 🙈 — tik dit asseblief uit.\n\nAntwoord KWOTASIE om 'n nuwe kwotasie te begin.",
 }
 
 const STRINGS: Record<Lang, Strings> = { en, zu, af }

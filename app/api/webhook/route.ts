@@ -5,7 +5,7 @@ import { extractBillFromText, extractBillFromPDF, extractBillFromImage, Extracte
 import { sendWhatsApp, sendWhatsAppTemplate, downloadMedia, formatBillConfirmation, formatIncompleteConfirmation, formatReminderConfirmation } from '@/lib/whatsapp'
 import {
   handleConvoStep, pendingDisambiguation, awaitingDisambiguation, startLanguagePicker, startGuidedQuote, startQuote, askBillOrQuote,
-  showMenu, startInvoice, CONVO_USER_COLUMNS, type ConvoUser,
+  showMenu, startInvoice, inConversation, CONVO_USER_COLUMNS, type ConvoUser,
 } from '@/lib/convo'
 import { setConvoState } from '@/lib/quotes'
 import { recentQuotesMessage, pendingBillsMessage, issueLoginCode } from '@/lib/replies'
@@ -349,17 +349,29 @@ async function processMessage(message: InboundMessage, profileName: string | nul
       }
     }
 
+    // Voice notes, before handleConvoStep and not after it.
+    //
+    // Every guided step reads message.text.body, which a voice note doesn't
+    // have, so the step sees an empty string and re-sends its own question.
+    // Answering out loud got you the same prompt back, word for word, with
+    // nothing to say we simply can't hear you — and no way out, since the next
+    // voice note did the same thing. Onboarding and step 3 of a quote were the
+    // worst of it: step 3 is the longest thing to type, so it's exactly where
+    // someone reaches for the mic.
+    //
+    // convo_state is deliberately left alone: typing the answer carries on from
+    // wherever he was, draft intact.
+    if (message.type === 'audio' || message.type === 'voice') {
+      const key = sender && inConversation(sender) ? 'voice_unsupported' : 'voice_unsupported_new'
+      await sendWhatsApp(from, t(senderLang, key))
+      return
+    }
+
     // Mid-conversation (language pick, onboarding, quote confirm/edit) takes
     // priority over extraction — otherwise "1200" as an answer gets parsed as
     // a bill. Skipped when replaying a disambiguation, which already cleared it.
     if (sender && !replayText && (await handleConvoStep(sender, message))) return
 
-    // Voice notes / video / stickers etc. — be upfront about what we can't read
-    // instead of letting them fall through to a generic parse failure.
-    if (message.type === 'audio' || message.type === 'voice') {
-      await sendWhatsApp(from, `I can't listen to voice notes yet 🙈 — please type it out (e.g. "pay ballet R850 by Friday") or forward the invoice as a PDF or photo.`)
-      return
-    }
     if (message.type !== 'text' && message.type !== 'document' && message.type !== 'image') {
       await sendWhatsApp(from, `I can only read text messages, photos and PDFs for now. Try one of those!`)
       return
