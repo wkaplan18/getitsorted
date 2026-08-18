@@ -15,11 +15,30 @@
 export const SITE_LANGS = ['en', 'zu'] as const
 export type SiteLang = (typeof SITE_LANGS)[number]
 
+/**
+ * The trigger word each language's page prints and prefills.
+ *
+ * Both are real commands the webhook already accepted. Making the isiZulu page
+ * use its own means the tap tells Sorted which page he came from, so a new user
+ * is never asked to pick a language he has just picked on the website. Someone
+ * who hand-types plain QUOTE off that page still works — he just gets the
+ * language question, which is the fallback, not a fault.
+ */
+export const LANG_TRIGGER: Record<SiteLang, string> = { en: 'quote', zu: 'i-quote' }
+
 /** Path each language lives at. English is the root. */
 export const LANG_PATH: Record<SiteLang, string> = { en: '/', zu: '/zu' }
 export const LANG_LABEL: Record<SiteLang, string> = { en: 'English', zu: 'isiZulu' }
-/** Two-letter form for the nav toggle, where there's no room for the full name. */
-export const LANG_SHORT: Record<SiteLang, string> = { en: 'EN', zu: 'ZU' }
+/**
+ * Short form for the nav toggle.
+ *
+ * Was 'EN' / 'ZU'. Two-letter codes are a developer's shorthand: an isiZulu
+ * speaker scanning a nav does not know that 'ZU' is his language, so the pill
+ * that exists to rescue him was invisible. The whole word is wider, which the
+ * handset rule below the nav pays for by shrinking the pills, not by dropping
+ * them.
+ */
+export const LANG_SHORT: Record<SiteLang, string> = { en: 'English', zu: 'Zulu' }
 
 export type SiteCopy = {
   htmlLang: string
@@ -189,7 +208,7 @@ const zu: SiteCopy = {
       'Phendula imibuzo emithathu ku-WhatsApp. Uthola i-PDF quote esezingeni eliphezulu enelogo yakho, imininingwane yebhange lakho, nesixhumanisi osidlulisela ikhasimende lakho. Ngaphansi komzuzu, njalo.',
     number: {
       before: 'Thumela u-',
-      word: 'QUOTE',
+      word: 'I-QUOTE',
       middle: 'ku-',
       note: 'Mahhala. Lowo mlayezo owodwa uqala i-quote yakho yokuqala — ilogo yakho, imininingwane yebhange lakho, ikhasimende lakho libona inkampani yangempela.',
     },
@@ -254,7 +273,7 @@ const zu: SiteCopy = {
   cta: {
     badge: 'Isiyasebenza',
     titleA: 'Thumela u-',
-    word: 'QUOTE',
+    word: 'I-QUOTE',
     titleB: '. Yilokho kuphela.',
     body: 'Ayikho i-app oyilandayo, alikho ifomu lokubhalisa, alikho iphasiwedi. I-WhatsApp kuphela.',
     button: 'Qala ku-WhatsApp →',

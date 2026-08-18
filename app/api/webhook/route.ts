@@ -9,7 +9,7 @@ import {
 } from '@/lib/convo'
 import { setConvoState } from '@/lib/quotes'
 import { recentQuotesMessage, pendingBillsMessage, issueLoginCode } from '@/lib/replies'
-import { t, toLang } from '@/lib/i18n'
+import { t, toLang, PICK_LANGUAGE, type Lang } from '@/lib/i18n'
 
 // One account this inbound message should be applied to. Normally there's exactly
 // one (the sender's own account, or the single account that trusts them) — but the
@@ -28,6 +28,25 @@ type InboundMessage = {
 
 const READ_FAIL_REPLY = "Sorry, I couldn't read that. Try forwarding the PDF or type: who to pay, how much, their bank details and due date.\n\nStuck? Reply MENU to start again."
 const SAVE_FAIL_REPLY = "Something went wrong saving that on my side — it has NOT been added. Please try sending it again in a minute."
+
+/**
+ * The language each QUOTE trigger word implies.
+ *
+ * A man only types I-QUOTE because the isiZulu page told him to — the word is
+ * printed on it and prefilled into the WhatsApp box by its buttons. That is the
+ * language question, already answered on the website, so a brand-new user who
+ * arrives on one of these skips being asked it a second time. Plain "quote"
+ * maps to nothing and still gets the picker.
+ *
+ * Only ever consulted for a user who has never been onboarded — see
+ * startGuidedQuote. A returning user's saved language is never overwritten by a
+ * link he happened to tap.
+ */
+const QUOTE_TRIGGER_LANG: Record<string, Lang> = {
+  'iquote': 'zu',
+  'i-quote': 'zu',
+  'kwotasie': 'af',
+}
 
 const WELCOME_MESSAGE = `👋 Welcome to *Sorted* — I help you send professional quotes and get paid.
 
@@ -170,7 +189,7 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
     if (user) {
       await startLanguagePicker(user)
     } else {
-      await sendWhatsApp(from, t('en', 'pick_language'))
+      await sendWhatsApp(from, PICK_LANGUAGE)
     }
     return true
   }
@@ -212,7 +231,7 @@ async function handleCommand(from: string, text: string, user: ConvoUser | null)
       await sendWhatsApp(from, t(lang, 'save_failed'))
       return true
     }
-    await startGuidedQuote(target)
+    await startGuidedQuote(target, QUOTE_TRIGGER_LANG[cmd] ?? null)
     return true
   }
 

@@ -33,11 +33,38 @@ export function toLang(value: unknown): Lang {
   return isLang(value) ? value : 'en'
 }
 
+/**
+ * The very first message Sorted ever sends, and the only one that is not in a
+ * language the user chose — because he hasn't chosen one yet.
+ *
+ * It used to be the English `pick_language` string. That was a guess dressed up
+ * as a default: a man who reads isiZulu more comfortably than English was
+ * greeted in English and asked, in English, whether he'd like isiZulu. The same
+ * applies to the LANGUAGE command, which exists precisely for someone who
+ * picked the wrong option and now cannot read his way back out.
+ *
+ * So all three languages, once, above a numbered list that needs no reading at
+ * all. It is four lines longer than the English version and removes the only
+ * step in the flow that can strand someone completely.
+ */
+export const PICK_LANGUAGE = [
+  "Hi! I'm Sorted. I help you send professional quotes and get paid.",
+  '',
+  'Which language should I reply in?',
+  'Ngikhulume nawe ngaluphi ulimi?',
+  'In watter taal moet ek antwoord?',
+  '',
+  '1  English',
+  '2  isiZulu',
+  '3  Afrikaans',
+].join('\n')
+
 type Strings = Record<StringKey, string>
 
 export type StringKey =
-  // language selection
-  | 'pick_language'
+  // language selection — the question itself is PICK_LANGUAGE above (one
+  // trilingual message); only the confirmation is per-language, because by then
+  // we know which one to use.
   | 'language_set'
   // onboarding
   | 'welcome'
@@ -118,8 +145,6 @@ export type StringKey =
   | 'cancelled'
 
 const en: Strings = {
-  pick_language:
-    "Hi! I'm Sorted. I help you send professional quotes and get paid.\n\nFirst — which language should I reply in?\n1  English\n2  isiZulu\n3  Afrikaans",
   language_set: "Done, I'll reply in English from now on.",
 
   welcome: "Hi! I'm Sorted. Reply QUOTE whenever you need to send a client a quote.",
@@ -224,8 +249,6 @@ const en: Strings = {
 }
 
 const zu: Strings = {
-  pick_language:
-    'Sawubona! NginguSorted. Ngikusiza uthumele ama-quote asezingeni eliphezulu uthole nemali.\n\nOkokuqala — ngikhulume nawe ngaluphi ulimi?\n1  IsiNgisi\n2  IsiZulu\n3  IsiBhunu',
   language_set: 'Kulungile, ngizophendula ngesiZulu kusukela manje.',
 
   welcome: 'Sawubona! NginguSorted. Phendula ngo-QUOTE noma nini uma udinga ukuthumela ikhasimende i-quote.',
@@ -322,8 +345,6 @@ const zu: Strings = {
 }
 
 const af: Strings = {
-  pick_language:
-    'Hallo! Ek is Sorted. Ek help jou professionele kwotasies stuur en betaal word.\n\nEerstens — in watter taal moet ek antwoord?\n1  Engels\n2  isiZulu\n3  Afrikaans',
   language_set: 'Reg so, ek antwoord voortaan in Afrikaans.',
 
   welcome: 'Hallo! Ek is Sorted. Antwoord KWOTASIE wanneer jy vir \'n kliënt \'n kwotasie moet stuur.',

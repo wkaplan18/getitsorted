@@ -12,7 +12,7 @@
 import sharp from 'sharp'
 import { supabaseAdmin } from './supabase'
 import { sendWhatsApp, downloadMedia } from './whatsapp'
-import { t, toLang, langFromChoice, fmtRand, type Lang } from './i18n'
+import { t, toLang, langFromChoice, fmtRand, PICK_LANGUAGE, type Lang } from './i18n'
 import { applyQuoteEdit, type ExtractedBill } from './claude'
 import { resolveBank, cleanAccountNumber } from './banks'
 import { ensureSubaccount, resetSubaccount } from './paystackSubaccount'
@@ -293,7 +293,7 @@ export async function handleConvoStep(
     case 'pick_language': {
       const picked = langFromChoice(text)
       if (!picked) {
-        await sendWhatsApp(from, t(lang, 'pick_language'))
+        await sendWhatsApp(from, PICK_LANGUAGE)
         return true
       }
       await supabaseAdmin.from('users').update({ language: picked }).eq('id', user.id)
@@ -714,7 +714,21 @@ async function startClientEdit(user: ConvoUser, lang: Lang): Promise<void> {
 /** Asks a brand-new user which language to reply in. */
 export async function startLanguagePicker(user: ConvoUser, draft?: Draft): Promise<void> {
   await setConvoState(user.id, { step: 'pick_language', draft })
-  await sendWhatsApp(user.whatsapp_number, t('en', 'pick_language'))
+  await sendWhatsApp(user.whatsapp_number, PICK_LANGUAGE)
+}
+
+/**
+ * Skips the language question for someone who has already answered it — on the
+ * website, by reading the isiZulu page and tapping its CTA.
+ *
+ * Only ever applied to a user who has not been onboarded. A returning user's
+ * saved language always wins: he chose it inside WhatsApp, deliberately, and a
+ * link he happened to tap must not overwrite that.
+ */
+async function applyLanguageHint(user: ConvoUser, hint: Lang): Promise<ConvoUser> {
+  await supabaseAdmin.from('users').update({ language: hint }).eq('id', user.id)
+  await sendWhatsApp(user.whatsapp_number, t(hint, 'language_set'))
+  return { ...user, language: hint }
 }
 
 /**
@@ -725,7 +739,7 @@ export async function startLanguagePicker(user: ConvoUser, draft?: Draft): Promi
  * once ever, because the answers are stored against the WhatsApp number and
  * reused on every future quote.
  */
-export async function startGuidedQuote(user: ConvoUser): Promise<void> {
+export async function startGuidedQuote(user: ConvoUser, hint?: Lang | null): Promise<void> {
   const draft = emptyDraft()
 
   // onboarded_at, not language, is the signal for "has this person been set up".
@@ -733,8 +747,15 @@ export async function startGuidedQuote(user: ConvoUser): Promise<void> {
   // pre-existing row — so language being set proves nothing about whether the
   // user ever actually chose it.
   if (!user.onboarded_at) {
-    await startLanguagePicker(user, draft)
-    return
+    // He arrived on a localised trigger word (I-QUOTE, KWOTASIE), which he can
+    // only have got from the matching page of the website. He has answered the
+    // language question already; asking it again is asking him to repeat
+    // himself in a language he just told us he'd rather not read.
+    if (!hint) {
+      await startLanguagePicker(user, draft)
+      return
+    }
+    user = await applyLanguageHint(user, hint)
   }
 
   const lang = toLang(user.language)

@@ -25,13 +25,21 @@
 // FORM: Extension of an established surface. No concept tournament run.
 
 import Link from 'next/link'
-import { siteCopy, LANG_PATH, LANG_LABEL, LANG_SHORT, SITE_LANGS, type SiteLang, type SiteCopy } from '@/lib/siteCopy'
+import LanguagePrompt from '@/components/LanguagePrompt'
+import { siteCopy, LANG_PATH, LANG_LABEL, LANG_SHORT, LANG_TRIGGER, SITE_LANGS, type SiteLang, type SiteCopy } from '@/lib/siteCopy'
 
 const WA_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').replace(/\D/g, '')
 
-// "quote" is the trigger word the webhook matches, so it stays untranslated —
-// prefilling the WhatsApp box with a localised word would start no conversation.
-const WA_QUOTE_LINK = WA_NUMBER ? `https://wa.me/${WA_NUMBER}?text=quote` : '/app'
+/**
+ * The WhatsApp link, prefilled with the trigger word this page prints.
+ *
+ * Both words are commands the webhook matches, so either starts the
+ * conversation — but the isiZulu one also tells Sorted which page he tapped
+ * from, which is how a new user skips the "which language?" question entirely.
+ */
+function waQuoteLink(lang: SiteLang): string {
+  return WA_NUMBER ? `https://wa.me/${WA_NUMBER}?text=${LANG_TRIGGER[lang]}` : '/app'
+}
 
 /**
  * The number as a human reads it off a page: +27 82 898 6780.
@@ -54,8 +62,11 @@ const WA_DISPLAY_NUMBER = displayNumber(WA_NUMBER)
 
 export default function Landing({ lang }: { lang: SiteLang }) {
   const t = siteCopy(lang)
+  const waLink = waQuoteLink(lang)
   return (
     <div lang={t.htmlLang}>
+      {/* Offered only on the English page — on /zu he is already there. */}
+      {lang === 'en' && <LanguagePrompt />}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500&display=swap');
         * { box-sizing: border-box; }
@@ -153,6 +164,9 @@ export default function Landing({ lang }: { lang: SiteLang }) {
              claw back the horizontal padding rather than dropping any of them. */
           .nav-inner { padding: 0 16px !important; }
           .nav-cta { padding: 9px 14px !important; font-size: 13px !important; }
+          /* 'English' and 'Zulu' are wider than the old EN/ZU codes. At 360px
+             the pills give the width back rather than the words being cut. */
+          .lang-pill { font-size: 10px !important; padding: 4px 7px !important; }
         }
 
         .lang-pill:focus-visible { outline: 2px solid #B4530A; outline-offset: 2px; }
@@ -202,7 +216,7 @@ export default function Landing({ lang }: { lang: SiteLang }) {
                 this works for someone reading on a laptop, or seeing the page
                 over someone's shoulder, which is how this spreads. */}
             <a
-              href={WA_QUOTE_LINK}
+              href={waLink}
               className="hero-number"
               style={{
                 display: 'block',
@@ -234,7 +248,7 @@ export default function Landing({ lang }: { lang: SiteLang }) {
             </a>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 36 }}>
-              <a href={WA_QUOTE_LINK} className="btn" style={{ background: '#B4530A', color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 16, padding: '14px 24px', borderRadius: 12, boxShadow: '0 1px 2px rgba(15,23,42,0.1), 0 10px 24px -10px rgba(180,83,10,0.6)' }}>
+              <a href={waLink} className="btn" style={{ background: '#B4530A', color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 16, padding: '14px 24px', borderRadius: 12, boxShadow: '0 1px 2px rgba(15,23,42,0.1), 0 10px 24px -10px rgba(180,83,10,0.6)' }}>
                 {t.hero.ctaPrimary}
               </a>
               <a href="#quotes" className="btn" style={{ background: '#fff', color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: 16, padding: '14px 24px', borderRadius: 12, border: '1px solid #E8DCC8' }}>
@@ -385,7 +399,7 @@ export default function Landing({ lang }: { lang: SiteLang }) {
               <p style={{ color: '#64748b', fontSize: 18, lineHeight: 1.7, marginBottom: 32 }}>
                 {t.who.body}
               </p>
-              <a href={WA_QUOTE_LINK} className="btn" style={{ background: '#B4530A', color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 16, padding: '14px 24px', borderRadius: 12, boxShadow: '0 1px 2px rgba(15,23,42,0.1), 0 10px 24px -10px rgba(180,83,10,0.6)' }}>
+              <a href={waLink} className="btn" style={{ background: '#B4530A', color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 16, padding: '14px 24px', borderRadius: 12, boxShadow: '0 1px 2px rgba(15,23,42,0.1), 0 10px 24px -10px rgba(180,83,10,0.6)' }}>
                 {t.hero.ctaPrimary}
               </a>
             </div>
@@ -419,7 +433,7 @@ export default function Landing({ lang }: { lang: SiteLang }) {
           <p style={{ color: 'rgba(255,255,255,0.82)', fontSize: 18, lineHeight: 1.7, margin: '0 0 36px' }}>
             {t.cta.body}
           </p>
-          <a href={WA_QUOTE_LINK} className="btn" style={{ background: '#0f172a', color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 18, padding: '16px 34px', borderRadius: 14, boxShadow: '0 2px 4px rgba(0,0,0,0.15), 0 16px 32px -14px rgba(0,0,0,0.5)' }}>
+          <a href={waLink} className="btn" style={{ background: '#0f172a', color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 18, padding: '16px 34px', borderRadius: 14, boxShadow: '0 2px 4px rgba(0,0,0,0.15), 0 16px 32px -14px rgba(0,0,0,0.5)' }}>
             {t.cta.button}
           </a>
           <p style={{ color: 'rgba(255,255,255,0.82)', fontSize: 13, marginTop: 16 }}>{t.cta.note}</p>
