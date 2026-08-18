@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata: Metadata = {
   title: 'Sorted',
@@ -21,7 +22,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script src="https://cdn.tailwindcss.com"></script>
       </head>
-      <body className="bg-gray-50 min-h-screen">{children}</body>
+      <body className="bg-gray-50 min-h-screen">
+        {children}
+        {/* Cookieless, so it needs no consent banner — which matters here,
+            since the point of it is reading ?ref= on quote footers, not
+            profiling anyone. */}
+        <Analytics />
+      </body>
     </html>
   )
 }

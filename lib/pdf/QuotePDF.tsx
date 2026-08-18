@@ -14,7 +14,10 @@ const SURF   = '#FAF9F6'
 // The marketing site, not NEXT_PUBLIC_APP_URL: this link is printed onto a
 // document that outlives the deploy that made it, and it must never carry a
 // preview URL into a customer's filing cabinet.
-const SITE_URL = 'https://getitsorted.co.za'
+// Tagged so arrivals from a quote are countable. Every tradesperson's client
+// is a small business owner looking at proof the thing works, and until this
+// was tagged there was no way to tell whether any of them ever followed it.
+const SITE_URL = 'https://getitsorted.co.za/?ref=pdf'
 const SITE_LABEL = 'getitSorted.co.za'
 
 const s = StyleSheet.create({

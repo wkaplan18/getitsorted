@@ -359,7 +359,7 @@ export default async function QuotePage({ params }: { params: Promise<{ token: s
             <p className="text-xs text-[#6B6B60]">
               Made with{' '}
               <a
-                href="https://getitsorted.co.za"
+                href="https://getitsorted.co.za/?ref=page"
                 className="text-[#B4530A] underline underline-offset-2 transition-opacity duration-150 hover:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B4530A]"
               >
                 getitSorted.co.za
