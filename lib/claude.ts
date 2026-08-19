@@ -251,3 +251,47 @@ export async function extractBillFromImage(base64Data: string, mimeType: 'image/
   const raw = (response.content[0] as { type: string; text: string }).text
   return parseJSON(raw)
 }
+
+/**
+ * Turns the trade a user typed into the English wording that goes on the quote.
+ *
+ * The trade prints in the PDF header and on the public quote page — documents
+ * the CLIENT keeps, and clients are not necessarily isiZulu speakers. So a user
+ * who onboards in isiZulu and answers "umpendi" must still hand his customer a
+ * quote that says "Painter", exactly as line item descriptions are already
+ * written in English whatever the user typed.
+ *
+ * Translation happens once, at capture, rather than per render: the quote page
+ * and PDF are on the client's critical path and must not wait on a model call.
+ * If the call fails the raw answer is kept — a quote headed "umpendi" is far
+ * better than onboarding that dead-ends on an API error.
+ */
+export async function translateTradeToEnglish(trade: string): Promise<string> {
+  const input = trade.trim()
+  if (!input) return input
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 64,
+      messages: [{
+        role: 'user',
+        content: `A South African tradesperson was asked what work he does and answered: "${input}"
+
+He may have answered in English, isiZulu, isiXhosa, Afrikaans, Sesotho or a mix. Give the English trade name that belongs on a quote his customer will read.
+
+Rules:
+- One or two words, title case: "Plumber", "Electrician", "Nail Technician", "Garden Services".
+- If the answer is already English, return it title-cased and otherwise unchanged.
+- If it is a business name rather than a trade, or you cannot tell what trade it is, return it exactly as given.
+- Return ONLY the trade, no quotes, no explanation.`,
+      }],
+    })
+    const out = (response.content[0] as { type: string; text: string }).text.trim()
+    // A model that decided to explain itself is a model to ignore.
+    return out && out.length <= 40 ? out : input
+  } catch (err) {
+    console.error('[claude] trade translation failed:', (err as Error).message)
+    return input
+  }
+}

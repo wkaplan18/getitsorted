@@ -201,7 +201,7 @@ const zu: SiteCopy = {
   },
   nav: { quotes: 'Thumela ama-quote', who: 'Ingeyabani', openApp: 'Vula i-app →' },
   hero: {
-    eyebrow: 'Yabo bonke ababhali bamanzi, ugesi, abapendi nawo wonke umuntu ozisebenzayo',
+    eyebrow: 'Yabo bonke oplama, abasebenza ngogesi, abapendi, abalungisa izingadi, abenzi bezinzipho, abalungisi bezinwele nawo wonke umuntu ozisebenzayo',
     titleTop: 'Thumela i-quote',
     titleAccent: 'nge-WhatsApp.',
     body:

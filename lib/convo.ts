@@ -13,7 +13,7 @@ import sharp from 'sharp'
 import { supabaseAdmin } from './supabase'
 import { sendWhatsApp, downloadMedia } from './whatsapp'
 import { t, toLang, langFromChoice, fmtRand, PICK_LANGUAGE, type Lang } from './i18n'
-import { applyQuoteEdit, type ExtractedBill } from './claude'
+import { applyQuoteEdit, translateTradeToEnglish, type ExtractedBill } from './claude'
 import { resolveBank, cleanAccountNumber } from './banks'
 import { ensureSubaccount, resetSubaccount } from './paystackSubaccount'
 import {
@@ -343,7 +343,10 @@ export async function handleConvoStep(
 
     case 'ask_trade': {
       if (text && !SKIP_WORDS.has(lower)) {
-        await supabaseAdmin.from('users').update({ trade: text }).eq('id', user.id)
+        // Stored in English: this prints on the quote the CLIENT reads, who may
+        // not share the language the user onboarded in.
+        const trade = await translateTradeToEnglish(text)
+        await supabaseAdmin.from('users').update({ trade }).eq('id', user.id)
       }
       await setConvoState(user.id, { step: 'ask_name', draft: state.draft, edit: state.edit })
       await sendWhatsApp(from, t(lang, 'ask_name'))

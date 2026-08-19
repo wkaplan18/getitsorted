@@ -298,7 +298,7 @@ const zu: Strings = {
   ask_business_name:
     'Libizwa ngokuthi yini ibhizinisi lakho?\n\nAwunalo igama lebhizinisi? Thumela igama lakho nje — yilona elizovela ku-quote.',
   ask_trade:
-    'Ngiyabonga, {business}. Wenza msebenzi muni?\n\nIgama elilodwa noma amabili nje — iplama, u-electrician, umhlanzi, umpendi, izinzipho, izingadi.',
+    'Ngiyabonga, {business}. Wenza msebenzi muni?\n\nIgama elilodwa noma amabili nje — iplama, u-electrician, umpendi, izinzipho, izingadi.',
   ask_name: 'Ngubani igama lakho siqu?\n\nLivela ku-quote ngaphansi kwegama lebhizinisi lakho.',
   ask_bank:
     'Usebenzisa liphi ibhange?\n\nLokhu kuvela kuwo wonke ama-quote — yindlela amakhasimende akho akukhokhela ngayo, ngakho ngiyakudinga ngaphambi kokwenza i-quote.\n\nFNB, Standard Bank, ABSA, Nedbank, Capitec, TymeBank…',

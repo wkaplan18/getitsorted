@@ -10,6 +10,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { sessionPhone } from '@/lib/session'
 import { isLang } from '@/lib/i18n'
 import { ensureSubaccount, resetSubaccount } from '@/lib/paystackSubaccount'
+import { translateTradeToEnglish } from '@/lib/claude'
 
 async function userIdFor(req: NextRequest): Promise<string | null> {
   const phone = sessionPhone(req)
@@ -108,6 +109,12 @@ export async function PATCH(req: NextRequest) {
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'nothing to update' }, { status: 400 })
+  }
+
+  // Same rule as onboarding: the trade goes on the client's copy, so it is
+  // stored in English whatever language it was typed in.
+  if (updates.trade) {
+    updates.trade = await translateTradeToEnglish(updates.trade)
   }
 
   const { error } = await supabaseAdmin.from('users').update(updates).eq('id', userId)
