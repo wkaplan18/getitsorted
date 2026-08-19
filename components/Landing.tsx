@@ -27,6 +27,8 @@
 import Link from 'next/link'
 import LanguagePrompt from '@/components/LanguagePrompt'
 import { siteCopy, LANG_PATH, LANG_LABEL, LANG_SHORT, LANG_TRIGGER, SITE_LANGS, type SiteLang, type SiteCopy } from '@/lib/siteCopy'
+import { BUSINESS } from '@/lib/business'
+import { grossUp, SORTED_FEE_CENTS, MIN_CARD_PAYABLE_CENTS } from '@/lib/paystack'
 
 const WA_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').replace(/\D/g, '')
 
@@ -170,6 +172,28 @@ export default function Landing({ lang }: { lang: SiteLang }) {
         }
 
         .lang-pill:focus-visible { outline: 2px solid #B4530A; outline-offset: 2px; }
+
+        .footer-link { color: #94a3b8; text-decoration: none; font-size: 13px; transition: color 0.15s; }
+        .footer-link:hover { color: #fff; }
+        .footer-link:focus-visible { outline: 2px solid #fff; outline-offset: 3px; border-radius: 3px; }
+
+        .contact-link { color: #B4530A; text-decoration: underline; text-underline-offset: 2px; transition: color 0.15s; }
+        .contact-link:hover { color: #8A4B12; }
+        .contact-link:focus-visible { outline: 2px solid #B4530A; outline-offset: 2px; border-radius: 3px; }
+
+        /* The fee table is three money columns. It stays a table — scrolling
+           it sideways beats stacking, because the whole point is reading the
+           three amounts across one row. */
+        .fee-table-wrap { overflow-x: auto; }
+        .fee-table { width: 100%; border-collapse: collapse; min-width: 380px; }
+        .fee-table th, .fee-table td { text-align: right; padding: 12px 14px; font-size: 15px; }
+        .fee-table th:first-child, .fee-table td:first-child { text-align: left; }
+        .fee-table thead th {
+          font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 600;
+          text-transform: uppercase; letter-spacing: 0.08em; color: #8A8A7C;
+          border-bottom: 1px solid #F0E1CC; padding-bottom: 10px;
+        }
+        .fee-table tbody tr + tr td { border-top: 1px solid #F5EADB; }
       `}</style>
 
       {/* NAV */}
@@ -181,6 +205,7 @@ export default function Landing({ lang }: { lang: SiteLang }) {
           </a>
           <div className="hide-mobile" style={{ display: 'flex', gap: 32 }}>
             <a href="#quotes" className="nav-link">{t.nav.quotes}</a>
+            <a href="#pricing" className="nav-link">{t.nav.pricing}</a>
             <a href="#who" className="nav-link">{t.nav.who}</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -418,6 +443,45 @@ export default function Landing({ lang }: { lang: SiteLang }) {
         </div>
       </section>
 
+      {/* ═══ PRICING ═══
+          Sits after "who it's for" on purpose: a tradesman has to recognise
+          himself before a price means anything. Three plain plans and one
+          worked example — the fee is the only awkward part of the product, so
+          it is shown in full rather than buried in a footnote. */}
+      <section id="pricing" style={{ padding: '88px 32px', background: '#FDF6EC', borderTop: '1px solid #F0E1CC' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <span className="label" style={{ color: '#B4530A' }}>{t.pricing.label}</span>
+            <h2 className="section-title" style={{ fontSize: 'clamp(28px, 4vw, 40px)', margin: '0 0 16px' }}>
+              {t.pricing.title}
+            </h2>
+            <p style={{ color: '#6B6B60', fontSize: 18, lineHeight: 1.7, maxWidth: 600, margin: '0 auto' }}>
+              {t.pricing.body}
+            </p>
+          </div>
+
+          <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 28 }}>
+            {t.pricing.plans.map(plan => (
+              <div key={plan.name} className="lift" style={{ background: '#fff', border: '1px solid #F0E1CC', borderRadius: 20, padding: 26, display: 'flex', flexDirection: 'column', boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 12px 28px -22px rgba(180,83,10,0.5)' }}>
+                <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: 13, color: '#8A4B12', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>{plan.name}</p>
+                <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 30, letterSpacing: '-0.03em', color: '#0f172a', margin: '0 0 6px' }}>{plan.price}</p>
+                <p style={{ color: '#8A8A7C', fontSize: 13, lineHeight: 1.6, margin: '0 0 18px' }}>{plan.priceNote}</p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {plan.items.map(item => (
+                    <li key={item} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#B4530A', color: '#fff', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 3 }}>✓</span>
+                      <span style={{ fontSize: 14, lineHeight: 1.6, color: '#334155' }}>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <FeeTable t={t} />
+        </div>
+      </section>
+
       {/* ═══ CTA ═══ */}
       <section style={{ padding: '92px 32px', background: '#B4530A', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -70, right: -70, width: 260, height: 260, borderRadius: '50%', background: 'rgba(255,255,255,0.09)' }} />
@@ -440,35 +504,88 @@ export default function Landing({ lang }: { lang: SiteLang }) {
         </div>
       </section>
 
+      {/* ═══ CONTACT ═══
+          A named operator, an address and a monitored inbox, on the page
+          itself rather than only behind a policy link. Anyone deciding whether
+          to pay a stranger through this thing — a customer, a card processor —
+          looks for exactly this and gives up if it is not there. */}
+      <section id="contact" style={{ padding: '72px 32px', background: '#fff' }}>
+        <div className="split-grid" style={{ maxWidth: 960, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center' }}>
+          <div>
+            <span className="label" style={{ color: '#B4530A' }}>{t.contact.label}</span>
+            <h2 className="section-title" style={{ fontSize: 'clamp(26px, 3.4vw, 34px)', margin: '0 0 16px' }}>
+              {t.contact.title}
+            </h2>
+            <p style={{ color: '#64748b', fontSize: 17, lineHeight: 1.7, margin: 0 }}>
+              {t.contact.body}
+            </p>
+          </div>
+
+          <div style={{ background: '#FDF6EC', border: '1px solid #F0E1CC', borderRadius: 20, padding: 28 }}>
+            <dl style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <ContactRow label={t.contact.operatorLabel}>
+                {BUSINESS.legalName}<br />
+                <span style={{ color: '#8A8A7C' }}>Trading as {BUSINESS.tradingAs}</span>
+              </ContactRow>
+              <ContactRow label={t.contact.addressLabel}>{BUSINESS.address}</ContactRow>
+              <ContactRow label={t.contact.emailLabel}>
+                <a href={`mailto:${BUSINESS.email}`} className="contact-link">{BUSINESS.email}</a>
+              </ContactRow>
+            </dl>
+            <p style={{ color: '#8A8A7C', fontSize: 13, lineHeight: 1.6, margin: '20px 0 0' }}>{t.contact.replyNote}</p>
+          </div>
+        </div>
+      </section>
+
       {/* ═══ FOOTER ═══ */}
-      <footer style={{ background: '#0f172a', padding: '40px 32px' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <SortedMark size={28} radius={8} />
-            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, color: '#fff', fontSize: 18, letterSpacing: '-0.03em' }}>Sorted</span>
+      <footer style={{ background: '#0f172a', padding: '44px 32px 36px' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 28 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <SortedMark size={28} radius={8} />
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, color: '#fff', fontSize: 18, letterSpacing: '-0.03em' }}>Sorted</span>
+              </div>
+              {/* The operator block is repeated here, not only in the contact
+                  section — the footer is where anyone verifying a business
+                  looks first, and on a long page it is the only part they are
+                  guaranteed to reach. */}
+              <address style={{ fontStyle: 'normal', color: '#94a3b8', fontSize: 13, lineHeight: 1.8, margin: 0 }}>
+                {BUSINESS.legalName}<br />
+                {BUSINESS.address}<br />
+                <a href={`mailto:${BUSINESS.email}`} className="footer-link">{BUSINESS.email}</a>
+              </address>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Link href="/terms" className="footer-link">{t.footer.terms}</Link>
+              <Link href="/privacy" className="footer-link">{t.footer.privacy}</Link>
+              <Link href="/refunds" className="footer-link">{t.footer.refunds}</Link>
+            </div>
+
+            {/* Language switcher lives in the footer rather than the nav: the
+                nav is already logo + CTA on a handset, and a visitor who lands
+                on the wrong language scrolls looking for the way out. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {SITE_LANGS.map(code => (
+                <Link
+                  key={code}
+                  href={LANG_PATH[code]}
+                  hrefLang={code}
+                  aria-current={code === lang ? 'page' : undefined}
+                  className="footer-link"
+                  style={{ color: code === lang ? '#fff' : undefined, fontWeight: code === lang ? 600 : 400 }}
+                >
+                  {LANG_LABEL[code]}
+                </Link>
+              ))}
+            </div>
           </div>
-          {/* Language switcher lives in the footer rather than the nav: the nav
-              is already logo + CTA on a handset, and a visitor who lands on the
-              wrong language scrolls looking for the way out. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {SITE_LANGS.map(code => (
-              <Link
-                key={code}
-                href={LANG_PATH[code]}
-                hrefLang={code}
-                aria-current={code === lang ? 'page' : undefined}
-                style={{
-                  fontSize: 13, textDecoration: 'none',
-                  color: code === lang ? '#fff' : '#94a3b8',
-                  fontWeight: code === lang ? 600 : 400,
-                }}
-              >
-                {LANG_LABEL[code]}
-              </Link>
-            ))}
+
+          <div style={{ borderTop: '1px solid #1e293b', marginTop: 30, paddingTop: 20, display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}>
+            <p style={{ color: '#475569', fontSize: 13, margin: 0 }}>{t.footer.built}</p>
+            <p style={{ color: '#334155', fontSize: 13, margin: 0 }}>© 2026 {BUSINESS.legalName}</p>
           </div>
-          <p style={{ color: '#475569', fontSize: 14, margin: 0 }}>{t.footer.built}</p>
-          <p style={{ color: '#334155', fontSize: 13, margin: 0 }}>© 2026 Sorted</p>
         </div>
       </footer>
     </div>
@@ -476,6 +593,84 @@ export default function Landing({ lang }: { lang: SiteLang }) {
 }
 
 /* ── pieces ───────────────────────────────────────────────────────────── */
+
+/**
+ * Formats cents as rands with a thousands separator.
+ *
+ * Hand-rolled rather than toLocaleString('en-ZA'): this renders on the server
+ * and the numbers are money, so it must not depend on which ICU data the build
+ * happens to ship with.
+ */
+function rands(cents: number): string {
+  const whole = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return `R${whole}.${(cents % 100).toString().padStart(2, '0')}`
+}
+
+/**
+ * The worked fee example.
+ *
+ * Every amount comes from grossUp() — the same function the checkout calls —
+ * so the page cannot quietly start advertising a fee the product no longer
+ * charges. The two rows are a small job and a big one, because the fee is
+ * part flat and part percentage and one example hides that.
+ */
+function FeeTable({ t }: { t: SiteCopy }) {
+  const examples = [1500, 5000].map(total => ({ total, fee: grossUp(total) }))
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #F0E1CC', borderRadius: 20, padding: 28 }}>
+      <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 20, letterSpacing: '-0.02em', color: '#0f172a', margin: '0 0 8px' }}>
+        {t.pricing.feeTitle}
+      </h3>
+      <p style={{ color: '#6B6B60', fontSize: 15, lineHeight: 1.7, margin: '0 0 20px' }}>{t.pricing.feeBody}</p>
+
+      <div className="fee-table-wrap">
+        <table className="fee-table">
+          <thead>
+            <tr>
+              {t.pricing.feeCols.map(col => <th key={col} scope="col">{col}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {examples.map(({ total, fee }) => (
+              <tr key={total}>
+                <td style={{ color: '#334155', fontWeight: 500 }}>{rands(fee.quoteTotalCents)}</td>
+                <td style={{ color: '#334155' }}>
+                  {rands(fee.chargeCents)}
+                  <span style={{ display: 'block', fontSize: 12, color: '#8A8A7C' }}>
+                    incl. {rands(fee.convenienceFeeCents)} fee
+                  </span>
+                </td>
+                <td style={{ color: '#B4530A', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700 }}>
+                  {rands(fee.quoteTotalCents)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p style={{ color: '#8A8A7C', fontSize: 13, lineHeight: 1.65, margin: '18px 0 0' }}>
+        {t.pricing.feeNote.replace('R2.00', rands(SORTED_FEE_CENTS))}
+      </p>
+      <p style={{ color: '#8A8A7C', fontSize: 13, lineHeight: 1.65, margin: '8px 0 0' }}>
+        {t.pricing.minNote.replace('R150', rands(MIN_CARD_PAYABLE_CENTS).replace('.00', ''))}
+      </p>
+    </div>
+  )
+}
+
+/** One labelled line of the contact card. */
+function ContactRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8A4B12', marginBottom: 4 }}>
+        {label}
+      </dt>
+      <dd style={{ margin: 0, color: '#334155', fontSize: 15, lineHeight: 1.6 }}>{children}</dd>
+    </div>
+  )
+}
 
 /**
  * Language toggle, in the nav rather than only the footer.

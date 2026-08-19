@@ -43,7 +43,7 @@ export const LANG_SHORT: Record<SiteLang, string> = { en: 'English', zu: 'Zulu' 
 export type SiteCopy = {
   htmlLang: string
   meta: { title: string; description: string }
-  nav: { quotes: string; who: string; openApp: string }
+  nav: { quotes: string; pricing: string; who: string; openApp: string }
   hero: {
     eyebrow: string
     titleTop: string
@@ -98,8 +98,31 @@ export type SiteCopy = {
     cta: string
     items: Array<{ emoji: string; title: string; desc: string }>
   }
+  pricing: {
+    label: string
+    title: string
+    body: string
+    plans: Array<{ name: string; price: string; priceNote: string; items: string[] }>
+    feeTitle: string
+    feeBody: string
+    // Column headings for the worked example. The amounts themselves are
+    // computed from lib/paystack.ts, never typed here, so the table cannot
+    // drift from what the checkout actually charges.
+    feeCols: [string, string, string]
+    feeNote: string
+    minNote: string
+  }
+  contact: {
+    label: string
+    title: string
+    body: string
+    operatorLabel: string
+    addressLabel: string
+    emailLabel: string
+    replyNote: string
+  }
   cta: { badge: string; titleA: string; word: string; titleB: string; body: string; button: string; note: string }
-  footer: { built: string }
+  footer: { built: string; terms: string; privacy: string; refunds: string }
 }
 
 const en: SiteCopy = {
@@ -109,7 +132,7 @@ const en: SiteCopy = {
     description:
       'Answer three questions on WhatsApp and get back a branded PDF quote with your logo and banking details. Built for South African tradespeople.',
   },
-  nav: { quotes: 'Send quotes', who: "Who it's for", openApp: 'Open app →' },
+  nav: { quotes: 'Send quotes', pricing: 'Pricing', who: "Who it's for", openApp: 'Open app →' },
   hero: {
     eyebrow: 'For plumbers, electricians, painters & every one-person trade',
     titleTop: 'Send a professional quote',
@@ -180,6 +203,63 @@ const en: SiteCopy = {
       { emoji: '🚚', title: 'Movers & handymen', desc: 'A written quote makes you the one they trust out of three.' },
     ],
   },
+  pricing: {
+    label: 'Pricing',
+    title: 'Free to use. You keep every rand you quote.',
+    body:
+      'Sorted costs you nothing to sign up for and nothing per month. The only fee is on card payments, it is added to what your client pays, and you still receive your quote total to the cent.',
+    plans: [
+      {
+        name: 'Sending quotes',
+        price: 'Free',
+        priceNote: 'No signup fee. No monthly fee.',
+        items: [
+          'Unlimited quotes',
+          'Your logo, or we make you one',
+          'Branded PDF and a link to forward',
+          'Opened and paid alerts on WhatsApp',
+          'Bill reminders and your dashboard',
+        ],
+      },
+      {
+        name: 'Getting paid by EFT',
+        price: 'Free',
+        priceNote: 'No fee from us, ever.',
+        items: [
+          'Your bank, account and branch code on every quote',
+          'The quote number as the payment reference',
+          'Your client pays straight into your account',
+        ],
+      },
+      {
+        name: 'Getting paid by card',
+        price: 'Card payment fee',
+        priceNote: 'Paid by your client, shown before they confirm.',
+        items: [
+          'You receive your quote total in full',
+          'Covers card processing plus R2.00 to Sorted',
+          'Settles into your own bank account',
+          'Card is offered on quotes of R150 and up',
+        ],
+      },
+    ],
+    feeTitle: 'What the fee actually looks like',
+    feeBody:
+      'Your client sees one line called Card payment fee and the total before they pay. Nothing comes off your side.',
+    feeCols: ['Your quote', 'Your client pays', 'You receive'],
+    feeNote:
+      'The fee is mostly the card network\u2019s cost, not ours \u2014 Sorted keeps R2.00 of it per paid quote. Amounts above are worked out by the same code that runs the checkout.',
+    minNote: 'Below R150 the card option is not shown at all, because a fixed fee on a small callout is not worth it. EFT is always there.',
+  },
+  contact: {
+    label: 'Contact',
+    title: 'Real people, real business.',
+    body: 'Questions about a quote, a payment or your account \u2014 email us and a person answers.',
+    operatorLabel: 'Operated by',
+    addressLabel: 'Address',
+    emailLabel: 'Email',
+    replyNote: 'We answer email enquiries within two business days.',
+  },
   cta: {
     badge: 'Now live',
     titleA: 'Text ',
@@ -189,7 +269,7 @@ const en: SiteCopy = {
     button: 'Start on WhatsApp →',
     note: 'Replies in English or isiZulu.',
   },
-  footer: { built: 'Built in South Africa 🇿🇦' },
+  footer: { built: 'Built in South Africa 🇿🇦', terms: 'Terms', privacy: 'Privacy', refunds: 'Refunds' },
 }
 
 const zu: SiteCopy = {
@@ -199,7 +279,7 @@ const zu: SiteCopy = {
     description:
       'Phendula imibuzo emithathu ku-WhatsApp uthole i-PDF quote enelogo yakho nemininingwane yebhange. Yenzelwe abasebenzi baseNingizimu Afrika.',
   },
-  nav: { quotes: 'Thumela ama-quote', who: 'Ingeyabani', openApp: 'Vula i-app →' },
+  nav: { quotes: 'Thumela ama-quote', pricing: 'Amanani', who: 'Ingeyabani', openApp: 'Vula i-app →' },
   hero: {
     eyebrow: 'Yabo bonke oplama, abasebenza ngogesi, abapendi, abalungisa izingadi, abenzi bezinzipho, abalungisi bezinwele nawo wonke umuntu ozisebenzayo',
     titleTop: 'Thumela i-quote',
@@ -270,6 +350,63 @@ const zu: SiteCopy = {
       { emoji: '🚚', title: 'Abathuthi nabakhandi', desc: 'I-quote ebhaliwe yenza ube nguwe abamethembayo kwabathathu.' },
     ],
   },
+  pricing: {
+    label: 'Amanani',
+    title: 'Mahhala ukuyisebenzisa. Uthola yonke imali oyibizile.',
+    body:
+      'USorted awukubizi lutho ukubhalisa futhi awunayo inkokhelo yanyanga zonke. Inkokhelo kuphela isekukhokheni ngekhadi, yengezwa kulokho ikhasimende lakho elikukhokhayo, futhi wena uthola isamba se-quote yakho ngokugcwele.',
+    plans: [
+      {
+        name: 'Ukuthumela ama-quote',
+        price: 'Mahhala',
+        priceNote: 'Ayikho inkokhelo yokubhalisa. Ayikho eyanyanga zonke.',
+        items: [
+          'Ama-quote angenamkhawulo',
+          'Ilogo yakho, noma sikwenzele',
+          'I-PDF enelogo nesixhumanisi osidluliselayo',
+          'Izaziso zokuvulwa nokukhokhwa ku-WhatsApp',
+          'Izikhumbuzo zezikweletu ne-dashboard yakho',
+        ],
+      },
+      {
+        name: 'Ukukhokhelwa nge-EFT',
+        price: 'Mahhala',
+        priceNote: 'Ayikho inkokhelo evela kithi, nanini.',
+        items: [
+          'Ibhange lakho, i-akhawunti nekhodi yegatsha kuwo wonke ama-quote',
+          'Inombolo ye-quote njengenkomba yenkokhelo',
+          'Ikhasimende lakho likhokha ngqo ku-akhawunti yakho',
+        ],
+      },
+      {
+        name: 'Ukukhokhelwa ngekhadi',
+        price: 'Inkokhelo yekhadi',
+        priceNote: 'Ikhokhwa ikhasimende lakho, ibonakala ngaphambi kokuqinisekisa.',
+        items: [
+          'Uthola isamba se-quote yakho ngokugcwele',
+          'Ihlanganisa izindleko zekhadi kanye no-R2.00 kuSorted',
+          'Ingena ngqo ku-akhawunti yakho yasebhange',
+          'Ikhadi linikezwa kuma-quote aqala ku-R150',
+        ],
+      },
+    ],
+    feeTitle: 'Ibukeka kanjani ngempela le nkokhelo',
+    feeBody:
+      'Ikhasimende lakho libona umugqa owodwa othi Inkokhelo yekhadi nesamba ngaphambi kokukhokha. Akukho okususwa kwelakho ihlangothi.',
+    feeCols: ['I-quote yakho', 'Ikhasimende likhokha', 'Wena uthola'],
+    feeNote:
+      'Inkokhelo ingeyenethiwekhi yamakhadi ikakhulukazi, hhayi eyethu \u2014 uSorted uthatha u-R2.00 kuyo nge-quote ngayinye ekhokhiwe. Amanani angenhla abalwa yikhodi efanayo esebenza ekukhokheni.',
+    minNote: 'Ngaphansi kuka-R150 ikhethelo lekhadi alibonakali nhlobo, ngoba inkokhelo emisiwe emsebenzini omncane ayifanele. I-EFT ihlala ikhona.',
+  },
+  contact: {
+    label: 'Xhumana nathi',
+    title: 'Abantu bangempela, ibhizinisi langempela.',
+    body: 'Imibuzo mayelana ne-quote, inkokhelo noma i-akhawunti yakho \u2014 sithumele i-imeyili, kuphendula umuntu.',
+    operatorLabel: 'Iphethwe ngu',
+    addressLabel: 'Ikheli',
+    emailLabel: 'I-imeyili',
+    replyNote: 'Siphendula imibuzo nge-imeyili zingakapheli izinsuku ezimbili zomsebenzi.',
+  },
   cta: {
     badge: 'Isiyasebenza',
     titleA: 'Thumela u-',
@@ -279,7 +416,7 @@ const zu: SiteCopy = {
     button: 'Qala ku-WhatsApp →',
     note: 'Iphendula ngesiNgisi noma ngesiZulu.',
   },
-  footer: { built: 'Yakhelwe eNingizimu Afrika 🇿🇦' },
+  footer: { built: 'Yakhelwe eNingizimu Afrika 🇿🇦', terms: 'Imigomo', privacy: 'Ubumfihlo', refunds: 'Ukubuyiselwa' },
 }
 
 const COPY: Record<SiteLang, SiteCopy> = { en, zu }
